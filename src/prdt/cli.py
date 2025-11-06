@@ -4,7 +4,7 @@ import pandas as pd
 from .cleaning import basic_clean
 from .anonymize import anonymize_column
 from .stats import simple_report
-from .plots import save_histograms
+from .plots import save_histograms, save_trend
 
 def main():
     p = argparse.ArgumentParser(description="PRDT CLI")
@@ -31,10 +31,18 @@ def main():
     with open(os.path.join(args.outdir, "report.json"), "w") as f:
         json.dump(report, f, indent=2)
 
-    # plots: histograms for score columns
+    # plots
     save_histograms(df, args.score_cols, args.outdir)
 
-    print("[PRDT] saved: interim_clean.csv, report.json, and histograms")
+    # simple time trend for the first score column, if date + id present
+    if args.score_cols:
+        value_col = args.score_cols[0]
+        time_col = "date" if "date" in df.columns else None
+        id_col = "anon_id" if "anon_id" in df.columns else ("participant_id" if "participant_id" in df.columns else None)
+        if time_col and id_col:
+            save_trend(df, id_col, time_col, value_col, args.outdir)
+
+    print("[PRDT] saved: interim_clean.csv, report.json, and plots")
 
 if __name__ == "__main__":
     main()
