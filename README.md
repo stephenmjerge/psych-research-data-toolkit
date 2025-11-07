@@ -5,7 +5,7 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 ## Features (v0.1.0)
 - Normalize headers and basic CSV cleaning  
 - HMAC-based ID anonymization via `PRDT_ANON_KEY`  
-- Descriptives, Pearson correlations, missing-value summary (JSON)  
+- Descriptives, Pearson correlations, missingness counts + percents (JSON)  
 - Histograms for selected score columns  
 - Simple time-trend plot by participant  
 

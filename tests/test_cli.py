@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os, subprocess, sys
+import json, os, subprocess, sys
 from pathlib import Path
 
 
@@ -27,6 +27,15 @@ def test_cli_smoke(tmp_path):
 
     subprocess.run(cmd, check=True, cwd=repo_root, env=env)
 
-    assert (outdir / "interim_clean.csv").is_file()
-    assert (outdir / "report.json").is_file()
+    clean_csv = outdir / "interim_clean.csv"
+    report_json = outdir / "report.json"
+
+    assert clean_csv.is_file()
+    assert report_json.is_file()
     assert any(outdir.glob("hist_*.png"))
+
+    report = json.loads(report_json.read_text())
+    missing = report["missing"]
+    assert "count" in missing and "percent" in missing and "detail" in missing
+    sample_col = missing["detail"][0]
+    assert {"variable", "missing", "missing_pct"} <= sample_col.keys()
