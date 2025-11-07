@@ -10,3 +10,10 @@ items = ["phq9_item1", "phq9_item2"]
 
 [prdt.scales.gad7]
 items = ["gad7_item1", "gad7_item2"]
+
+[prdt.alerts]
+missing_pct = 10
+
+[prdt.alerts.reliability]
+cronbach_alpha_min = 0.75
+mcdonald_omega_min = 0.75

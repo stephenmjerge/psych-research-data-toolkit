@@ -99,7 +99,55 @@ def missing_summary(df: pd.DataFrame) -> dict:
         "detail": detail,
     }
 
-def simple_report(df: pd.DataFrame, cols: list[str], scales: dict[str, list[str]] | None = None) -> dict:
+def _missing_alerts(missing: dict, threshold: float) -> list[dict[str, object]]:
+    alerts = []
+    percents = missing.get("percent", {})
+    for col, pct in percents.items():
+        try:
+            value = float(pct)
+        except (TypeError, ValueError):
+            continue
+        if value >= threshold:
+            alerts.append({
+                "type": "missingness",
+                "column": col,
+                "percent": value,
+                "threshold": threshold,
+            })
+    return alerts
+
+def _reliability_alerts(overall: dict[str, float | None],
+                        scales: dict[str, dict[str, object]] | None,
+                        thresholds: dict[str, float]) -> list[dict[str, object]]:
+    alerts: list[dict[str, object]] = []
+    alpha_min = thresholds.get("cronbach_alpha_min")
+    omega_min = thresholds.get("mcdonald_omega_min")
+
+    def maybe_add(label: str, dtype: str, value: float | None, limit: float | None):
+        if limit is None or value is None:
+            return
+        if value < limit:
+            alerts.append({
+                "type": "reliability",
+                "target": label,
+                "metric": dtype,
+                "value": value,
+                "threshold": limit,
+            })
+
+    maybe_add("overall", "cronbach_alpha", overall.get("cronbach_alpha"), alpha_min)
+    maybe_add("overall", "mcdonald_omega", overall.get("mcdonald_omega"), omega_min)
+
+    if scales:
+        for name, metrics in scales.items():
+            maybe_add(name, "cronbach_alpha", metrics.get("cronbach_alpha"), alpha_min)
+            maybe_add(name, "mcdonald_omega", metrics.get("mcdonald_omega"), omega_min)
+
+    return alerts
+
+def simple_report(df: pd.DataFrame, cols: list[str],
+                  scales: dict[str, list[str]] | None = None,
+                  alerts: dict[str, object] | None = None) -> dict:
     desc = describe_columns(df, cols).reset_index().rename(columns={"index":"variable"})
     corr = pearson_corr(df, cols)
     alpha = cronbach_alpha(df, cols)
@@ -111,6 +159,25 @@ def simple_report(df: pd.DataFrame, cols: list[str], scales: dict[str, list[str]
         "mcdonald_omega": omega,
         "missing": missing_summary(df),
     }
+    scale_block = None
     if scales:
-        report["scale_reliability"] = scale_reliability_summary(df, scales)
+        scale_block = scale_reliability_summary(df, scales)
+        report["scale_reliability"] = scale_block
+
+    alert_items: list[dict[str, object]] = []
+    if alerts:
+        missing_threshold = alerts.get("missing_pct")
+        if isinstance(missing_threshold, (int, float)):
+            alert_items.extend(_missing_alerts(report["missing"], float(missing_threshold)))
+
+        reliability_thresholds = alerts.get("reliability")
+        if isinstance(reliability_thresholds, dict):
+            alert_items.extend(
+                _reliability_alerts(
+                    {"cronbach_alpha": alpha, "mcdonald_omega": omega},
+                    scale_block,
+                    reliability_thresholds,
+                )
+            )
+    report["alerts"] = alert_items
     return report

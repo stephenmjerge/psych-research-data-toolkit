@@ -6,6 +6,7 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 - Normalize headers and basic CSV cleaning  
 - HMAC-based ID anonymization via `PRDT_ANON_KEY`  
 - Descriptives, Pearson correlations, Cronbach’s alpha & McDonald’s ω (overall + per-scale), missingness counts + percents (JSON)  
+- Optional alert thresholds for reliability and column-level missingness  
 - Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
 - CLI subcommands for focused workflows (`clean`, `stats`, `plot`, `run`)  
@@ -53,6 +54,7 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 ## Profiles (`--config`)
 - Create a TOML profile to avoid repeating CLI flags. Paths in the file are resolved relative to the config’s directory.
 - Define reliability groups under `[prdt.scales.<name>]` so each scale gets its own Cronbach’s alpha and McDonald’s ω entries in `report.json`.
+- Configure alert thresholds under `[prdt.alerts]` to highlight high missingness or low reliability in `report.json`.
 - Example (`configs/anxiety.toml`):
 
   ```toml
@@ -68,13 +70,26 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 
   [prdt.scales.gad7]
   items = ["gad7_item1", "gad7_item2"]
+
+  [prdt.alerts]
+  missing_pct = 10.0
+
+  [prdt.alerts.reliability]
+  cronbach_alpha_min = 0.75
+  mcdonald_omega_min = 0.75
   ```
 
 - Invoke with `prdt --config configs/anxiety.toml` (you can still override any option on the command line).
 
+## Alerts
+- `report.json` contains an `alerts` array. Each entry describes either:
+  - `type = "missingness"` when a column’s missing percent exceeds `missing_pct`.
+  - `type = "reliability"` when Cronbach’s α or McDonald’s ω drops below the configured minimum (overall or per-scale).
+- Alerts are informational only; the CLI still writes outputs so you can review and decide on follow-up cleaning.
+
 ### Outputs
 - `interim_clean.csv`
-- `report.json` (descriptives, correlations, reliability, missing)
+- `report.json` (descriptives, correlations, reliability, missing, alerts)
 - `hist_*.png`, `trend_*.png`, `missingness.png`
 
 ### Reproducibility & Safety

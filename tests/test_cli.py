@@ -42,11 +42,13 @@ def test_cli_smoke(tmp_path):
     missing = report["missing"]
     alpha = report["cronbach_alpha"]
     omega = report["mcdonald_omega"]
+    alerts = report["alerts"]
     assert "count" in missing and "percent" in missing and "detail" in missing
     sample_col = missing["detail"][0]
     assert {"variable", "missing", "missing_pct"} <= sample_col.keys()
     assert alpha is None or isinstance(alpha, float)
     assert omega is None or isinstance(omega, float)
+    assert isinstance(alerts, list)
 
     stats_only = tmp_path / "stats_only"
     run_cli(stats_only, "stats")
@@ -66,6 +68,13 @@ items = ["phq9_item1", "phq9_item2"]
 
 [prdt.scales.gad7]
 items = ["gad7_item1", "gad7_item2"]
+
+[prdt.alerts]
+missing_pct = 0.0
+
+[prdt.alerts.reliability]
+cronbach_alpha_min = 0.95
+mcdonald_omega_min = 0.95
 """
     config_file.write_text(config_text.strip(), encoding="utf-8")
     subprocess.run(
@@ -83,8 +92,10 @@ items = ["gad7_item1", "gad7_item2"]
     assert (config_out / "report.json").is_file()
     config_report = json.loads((config_out / "report.json").read_text())
     scale_rel = config_report["scale_reliability"]
+    alert_block = config_report["alerts"]
     assert set(scale_rel.keys()) == {"phq9", "gad7"}
     for meta in scale_rel.values():
         assert meta["items"]
         assert meta["cronbach_alpha"] is None or isinstance(meta["cronbach_alpha"], float)
         assert meta["mcdonald_omega"] is None or isinstance(meta["mcdonald_omega"], float)
+    assert any(alert["type"] == "missingness" or alert["type"] == "reliability" for alert in alert_block)

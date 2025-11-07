@@ -11,6 +11,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - CLI subcommands: `clean`, `stats`, `plot`, `run`
 - Config profile loading via `--config path/to/profile.toml`
 - Config-defined reliability scales (per-scale Cronbach’s alpha & McDonald’s ω)
+- Alert thresholds for missingness and reliability (reported in `report.json`)
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)
