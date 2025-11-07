@@ -45,3 +45,21 @@ def save_trend(df: pd.DataFrame, id_col: str, time_col: str, value_col: str, out
     plt.tight_layout()
     plt.savefig(os.path.join(outdir, f"trend_{value_col}.png"))
     plt.close()
+
+def save_missingness_bar(df: pd.DataFrame, outdir: str) -> None:
+    """Render a bar chart of percent missing per column."""
+    miss = df.isna().mean().sort_values(ascending=False) * 100
+    miss = miss[miss > 0]
+    if miss.empty:
+        return
+
+    os.makedirs(outdir, exist_ok=True)
+    plt.figure(figsize=(max(6, len(miss) * 0.8), 4))
+    miss.plot(kind="bar", color="#c44e52")
+    plt.ylabel("Percent Missing")
+    plt.ylim(0, min(100, miss.max() + 5))
+    plt.title("Missingness by Column")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.savefig(os.path.join(outdir, "missingness.png"))
+    plt.close()

@@ -9,7 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover
 from .cleaning import basic_clean
 from .anonymize import anonymize_column
 from .stats import simple_report
-from .plots import save_histograms, save_trend
+from .plots import save_histograms, save_trend, save_missingness_bar
 
 def _validate_score_columns(df: pd.DataFrame, cols: list[str]) -> None:
     """Ensure requested score columns exist and contain numeric data."""
@@ -90,6 +90,7 @@ def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> None:
     id_col = "anon_id" if "anon_id" in df.columns else ("participant_id" if "participant_id" in df.columns else None)
     if time_col and id_col:
         save_trend(df, id_col, time_col, value_col, outdir)
+    save_missingness_bar(df, outdir)
 
 def _run_clean(args: argparse.Namespace) -> None:
     df = _prepare_dataframe(args.input, args.skip_anon)

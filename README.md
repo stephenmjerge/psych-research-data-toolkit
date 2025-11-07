@@ -2,11 +2,11 @@
 
 A clean, reproducible toolkit for psychological and psychiatric research: CSV cleaning, anonymization, descriptives, correlations, and clinical data visualizations (histograms, time-trend).
 
-## Features (v0.1.0)
+## Features
 - Normalize headers and basic CSV cleaning  
 - HMAC-based ID anonymization via `PRDT_ANON_KEY`  
 - Descriptives, Pearson correlations, Cronbach’s alpha (overall + per-scale), missingness counts + percents (JSON)  
-- Histograms for selected score columns  
+- Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
 - CLI subcommands for focused workflows (`clean`, `stats`, `plot`, `run`)  
 
@@ -74,8 +74,8 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 
 ### Outputs
 - `interim_clean.csv`
-- `report.json` (descriptives, correlations, missing)
-- `hist_*.png`, `trend_*.png`
+- `report.json` (descriptives, correlations, reliability, missing)
+- `hist_*.png`, `trend_*.png`, `missingness.png`
 
 ### Reproducibility & Safety
 - Never commit PHI/PII; keep only synthetic data in-repo

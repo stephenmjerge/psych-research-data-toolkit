@@ -36,6 +36,7 @@ def test_cli_smoke(tmp_path):
     assert clean_csv.is_file()
     assert report_json.is_file()
     assert any(outdir.glob("hist_*.png"))
+    assert (outdir / "missingness.png").is_file()
 
     report = json.loads(report_json.read_text())
     missing = report["missing"]
