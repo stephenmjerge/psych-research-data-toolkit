@@ -4,3 +4,9 @@ input = "../data/examples/surveys.csv"
 outdir = "../outputs/anxiety-profile"
 score_cols = ["phq9_total", "gad7_total"]
 skip_anon = false
+
+[prdt.scales.phq9]
+items = ["phq9_item1", "phq9_item2"]
+
+[prdt.scales.gad7]
+items = ["gad7_item1", "gad7_item2"]

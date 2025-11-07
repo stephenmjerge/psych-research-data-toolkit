@@ -30,6 +30,31 @@ def _validate_score_columns(df: pd.DataFrame, cols: list[str]) -> None:
     if non_numeric:
         raise SystemExit(f"[PRDT] Score columns contain no numeric values: {', '.join(non_numeric)}")
 
+def _normalize_scales(raw_scales: object) -> dict[str, list[str]]:
+    """Convert TOML scale definitions to a dictionary of name -> list[str]."""
+    if not isinstance(raw_scales, dict):
+        return {}
+
+    normalized: dict[str, list[str]] = {}
+    for name, payload in raw_scales.items():
+        if isinstance(payload, dict):
+            items = payload.get("items")
+        else:
+            items = payload
+
+        if isinstance(items, str):
+            items_list = [items]
+        elif isinstance(items, list):
+            items_list = [str(x) for x in items if isinstance(x, (str, int, float))]
+        else:
+            continue
+
+        items_list = [str(item) for item in items_list if str(item).strip()]
+        if items_list:
+            normalized[str(name)] = items_list
+
+    return normalized
+
 def _prepare_dataframe(path: str, skip_anon: bool) -> pd.DataFrame:
     df = pd.read_csv(path)
     df = basic_clean(df)
@@ -44,9 +69,14 @@ def _write_clean_csv(df: pd.DataFrame, outdir: str) -> None:
     _ensure_outdir(outdir)
     df.to_csv(os.path.join(outdir, "interim_clean.csv"), index=False)
 
-def _write_report(df: pd.DataFrame, cols: list[str], outdir: str) -> None:
+def _write_report(df: pd.DataFrame, cols: list[str], outdir: str, scales: dict[str, list[str]] | None = None) -> None:
     _validate_score_columns(df, cols)
-    report = simple_report(df, cols)
+    if scales:
+        for name, items in scales.items():
+            if not items:
+                raise SystemExit(f"[PRDT] Scale '{name}' must include at least one column")
+            _validate_score_columns(df, items)
+    report = simple_report(df, cols, scales=scales)
     _ensure_outdir(outdir)
     with open(os.path.join(outdir, "report.json"), "w") as f:
         json.dump(report, f, indent=2)
@@ -68,7 +98,7 @@ def _run_clean(args: argparse.Namespace) -> None:
 
 def _run_stats(args: argparse.Namespace) -> None:
     df = _prepare_dataframe(args.input, args.skip_anon)
-    _write_report(df, args.score_cols, args.outdir)
+    _write_report(df, args.score_cols, args.outdir, getattr(args, "scales", None))
     print("[PRDT] saved: report.json")
 
 def _run_plot(args: argparse.Namespace) -> None:
@@ -79,7 +109,7 @@ def _run_plot(args: argparse.Namespace) -> None:
 def _run_full(args: argparse.Namespace) -> None:
     df = _prepare_dataframe(args.input, args.skip_anon)
     _write_clean_csv(df, args.outdir)
-    _write_report(df, args.score_cols, args.outdir)
+    _write_report(df, args.score_cols, args.outdir, getattr(args, "scales", None))
     _write_plots(df, args.score_cols, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
 
@@ -121,6 +151,13 @@ def _load_config(path: str | None) -> dict[str, object]:
             data[key] = str((base / value).resolve())
     if "score_cols" in data and isinstance(data["score_cols"], str):
         data["score_cols"] = [data["score_cols"]]
+
+    normalized_scales = _normalize_scales(data.get("scales"))
+    if normalized_scales:
+        data["scales"] = normalized_scales
+    else:
+        data.pop("scales", None)
+
     return data
 
 def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_command_override: bool) -> argparse.Namespace:
@@ -131,9 +168,13 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_com
     for key in ("input", "outdir", "score_cols", "skip_anon"):
         if getattr(args, key, None) is None and config.get(key) is not None:
             setattr(args, key, config[key])
+    if config.get("scales") is not None:
+        setattr(args, "scales", config["scales"])
     return args
 
 def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> argparse.Namespace:
+    if not hasattr(args, "scales"):
+        args.scales = None
     if args.score_cols is None:
         args.score_cols = ["phq9_total", "gad7_total"]
     missing = [field for field in ("input", "outdir") if getattr(args, field) is None]

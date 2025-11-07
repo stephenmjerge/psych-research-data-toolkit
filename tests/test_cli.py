@@ -58,6 +58,11 @@ command = "stats"
 input = "{input_csv}"
 outdir = "{config_out}"
 score_cols = ["phq9_total", "gad7_total"]
+[prdt.scales.phq9]
+items = ["phq9_item1", "phq9_item2"]
+
+[prdt.scales.gad7]
+items = ["gad7_item1", "gad7_item2"]
 """
     config_file.write_text(config_text.strip(), encoding="utf-8")
     subprocess.run(
@@ -73,3 +78,9 @@ score_cols = ["phq9_total", "gad7_total"]
         env=env,
     )
     assert (config_out / "report.json").is_file()
+    config_report = json.loads((config_out / "report.json").read_text())
+    scale_alphas = config_report["scale_alphas"]
+    assert set(scale_alphas.keys()) == {"phq9", "gad7"}
+    for meta in scale_alphas.values():
+        assert meta["items"]
+        assert meta["cronbach_alpha"] is None or isinstance(meta["cronbach_alpha"], float)
