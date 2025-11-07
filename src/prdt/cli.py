@@ -6,6 +6,25 @@ from .anonymize import anonymize_column
 from .stats import simple_report
 from .plots import save_histograms, save_trend
 
+def _validate_score_columns(df: pd.DataFrame, cols: list[str]) -> None:
+    """Ensure requested score columns exist and contain numeric data."""
+    if not cols:
+        raise SystemExit("[PRDT] Provide at least one --score-col for stats/plots.")
+
+    missing = [c for c in cols if c not in df.columns]
+    if missing:
+        raise SystemExit(f"[PRDT] Missing score columns: {', '.join(missing)}")
+
+    non_numeric = []
+    for col in cols:
+        converted = pd.to_numeric(df[col], errors="coerce")
+        if converted.notna().sum() == 0:
+            non_numeric.append(col)
+        df[col] = converted
+
+    if non_numeric:
+        raise SystemExit(f"[PRDT] Score columns contain no numeric values: {', '.join(non_numeric)}")
+
 def main():
     p = argparse.ArgumentParser(description="PRDT CLI")
     p.add_argument("--input", required=True, help="Path to input CSV")
@@ -21,6 +40,9 @@ def main():
     # anonymize if we have a participant_id column
     if "participant_id" in df.columns:
         df = anonymize_column(df, "participant_id", out_col="anon_id")
+
+    # validate and prepare score columns
+    _validate_score_columns(df, args.score_cols)
 
     # outputs: cleaned CSV
     os.makedirs(args.outdir, exist_ok=True)

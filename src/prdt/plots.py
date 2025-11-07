@@ -7,8 +7,11 @@ def save_histograms(df: pd.DataFrame, cols: list[str], outdir: str) -> None:
     os.makedirs(outdir, exist_ok=True)
     for c in cols:
         if c in df.columns:
+            series = pd.to_numeric(df[c], errors="coerce").dropna()
+            if series.empty:
+                continue
             plt.figure()
-            df[c].dropna().astype(float).plot(kind="hist", bins=20, title=f"Distribution: {c}")
+            series.plot(kind="hist", bins=20, title=f"Distribution: {c}")
             plt.xlabel(c)
             plt.ylabel("Count")
             plt.tight_layout()
@@ -28,7 +31,8 @@ def save_trend(df: pd.DataFrame, id_col: str, time_col: str, value_col: str, out
 
     # robust datetime handling
     tmp[time_col] = pd.to_datetime(tmp[time_col], errors="coerce")
-    tmp = tmp.dropna(subset=[time_col]).sort_values([id_col, time_col])
+    tmp[value_col] = pd.to_numeric(tmp[value_col], errors="coerce")
+    tmp = tmp.dropna(subset=[time_col, value_col]).sort_values([id_col, time_col])
     if tmp.empty:
         return
 
