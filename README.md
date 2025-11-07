@@ -5,7 +5,7 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 ## Features
 - Normalize headers and basic CSV cleaning  
 - HMAC-based ID anonymization via `PRDT_ANON_KEY`  
-- Descriptives, Pearson correlations, Cronbach’s alpha (overall + per-scale), missingness counts + percents (JSON)  
+- Descriptives, Pearson correlations, Cronbach’s alpha & McDonald’s ω (overall + per-scale), missingness counts + percents (JSON)  
 - Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
 - CLI subcommands for focused workflows (`clean`, `stats`, `plot`, `run`)  
@@ -52,7 +52,7 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 
 ## Profiles (`--config`)
 - Create a TOML profile to avoid repeating CLI flags. Paths in the file are resolved relative to the config’s directory.
-- Define reliability groups under `[prdt.scales.<name>]` so each scale gets its own Cronbach’s alpha entry in `report.json`.
+- Define reliability groups under `[prdt.scales.<name>]` so each scale gets its own Cronbach’s alpha and McDonald’s ω entries in `report.json`.
 - Example (`configs/anxiety.toml`):
 
   ```toml

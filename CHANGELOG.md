@@ -10,7 +10,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Missingness detail report (count and percent per column)
 - CLI subcommands: `clean`, `stats`, `plot`, `run`
 - Config profile loading via `--config path/to/profile.toml`
-- Config-defined reliability scales (per-scale Cronbach’s alpha)
+- Config-defined reliability scales (per-scale Cronbach’s alpha & McDonald’s ω)
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)

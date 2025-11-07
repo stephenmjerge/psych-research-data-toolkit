@@ -41,10 +41,12 @@ def test_cli_smoke(tmp_path):
     report = json.loads(report_json.read_text())
     missing = report["missing"]
     alpha = report["cronbach_alpha"]
+    omega = report["mcdonald_omega"]
     assert "count" in missing and "percent" in missing and "detail" in missing
     sample_col = missing["detail"][0]
     assert {"variable", "missing", "missing_pct"} <= sample_col.keys()
     assert alpha is None or isinstance(alpha, float)
+    assert omega is None or isinstance(omega, float)
 
     stats_only = tmp_path / "stats_only"
     run_cli(stats_only, "stats")
@@ -80,8 +82,9 @@ items = ["gad7_item1", "gad7_item2"]
     )
     assert (config_out / "report.json").is_file()
     config_report = json.loads((config_out / "report.json").read_text())
-    scale_alphas = config_report["scale_alphas"]
-    assert set(scale_alphas.keys()) == {"phq9", "gad7"}
-    for meta in scale_alphas.values():
+    scale_rel = config_report["scale_reliability"]
+    assert set(scale_rel.keys()) == {"phq9", "gad7"}
+    for meta in scale_rel.values():
         assert meta["items"]
         assert meta["cronbach_alpha"] is None or isinstance(meta["cronbach_alpha"], float)
+        assert meta["mcdonald_omega"] is None or isinstance(meta["mcdonald_omega"], float)
