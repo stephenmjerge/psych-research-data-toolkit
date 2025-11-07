@@ -50,6 +50,21 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 - `prdt plot`: Clean, validate score columns, and generate `hist_*.png` plus `trend_*.png`.
 - `prdt run`: Full pipeline (equivalent to running `clean`, `stats`, `plot`). Invoked automatically if no subcommand is supplied.
 
+## Profiles (`--config`)
+- Create a TOML profile to avoid repeating CLI flags. Paths in the file are resolved relative to the config’s directory.
+- Example (`configs/anxiety.toml`):
+
+  ```toml
+  [prdt]
+  command = "run"
+  input = "../data/examples/surveys.csv"
+  outdir = "../outputs/anxiety-profile"
+  score_cols = ["phq9_total", "gad7_total"]
+  skip_anon = false
+  ```
+
+- Invoke with `prdt --config configs/anxiety.toml` (you can still override any option on the command line).
+
 ### Outputs
 - `interim_clean.csv`
 - `report.json` (descriptives, correlations, missing)
@@ -64,5 +79,5 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 ### Roadmap (Next)
 - Additional reliability metrics (e.g., McDonald’s ω)
 - More granular missingness visualizations
-- CLI config profiles (pre-set pipelines)
+- CLI config bundles with multi-scale alpha groups
 - CI job to run `pytest`

@@ -1,6 +1,11 @@
 from __future__ import annotations
 import argparse, os, json, sys
+from pathlib import Path
 import pandas as pd
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
 from .cleaning import basic_clean
 from .anonymize import anonymize_column
 from .stats import simple_report
@@ -78,19 +83,79 @@ def _run_full(args: argparse.Namespace) -> None:
     _write_plots(df, args.score_cols, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
 
+def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
+    config_path = None
+    cleaned: list[str] = []
+    it = iter(range(len(argv)))
+    for idx in it:
+        arg = argv[idx]
+        if arg == "--config":
+            if idx + 1 >= len(argv):
+                raise SystemExit("[PRDT] --config requires a path")
+            config_path = argv[idx + 1]
+            next(it, None)
+            continue
+        if arg.startswith("--config="):
+            config_path = arg.split("=", 1)[1]
+            continue
+        cleaned.append(arg)
+    return config_path, cleaned
+
+def _load_config(path: str | None) -> dict[str, object]:
+    if not path:
+        return {}
+    cfg_path = Path(path).expanduser()
+    if not cfg_path.exists():
+        raise SystemExit(f"[PRDT] Config file not found: {path}")
+    with cfg_path.open("rb") as f:
+        data = tomllib.load(f)
+    profile = data.get("prdt") if isinstance(data, dict) else None
+    if isinstance(profile, dict):
+        data = profile
+    if not isinstance(data, dict):
+        raise SystemExit("[PRDT] Config file must contain a [prdt] table or key/value pairs")
+    base = cfg_path.parent
+    for key in ("input", "outdir"):
+        value = data.get(key)
+        if isinstance(value, str) and value:
+            data[key] = str((base / value).resolve())
+    if "score_cols" in data and isinstance(data["score_cols"], str):
+        data["score_cols"] = [data["score_cols"]]
+    return data
+
+def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_command_override: bool) -> argparse.Namespace:
+    if not config:
+        return args
+    if allow_command_override and isinstance(config.get("command"), str):
+        args.command = config["command"]  # type: ignore[assignment]
+    for key in ("input", "outdir", "score_cols", "skip_anon"):
+        if getattr(args, key, None) is None and config.get(key) is not None:
+            setattr(args, key, config[key])
+    return args
+
+def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> argparse.Namespace:
+    if args.score_cols is None:
+        args.score_cols = ["phq9_total", "gad7_total"]
+    missing = [field for field in ("input", "outdir") if getattr(args, field) is None]
+    if missing:
+        parser.error(f"Missing required options: {', '.join('--' + m.replace('_', '-') for m in missing)}")
+    if args.skip_anon is None:
+        args.skip_anon = False
+    return args
+
 def _build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--input", required=True, help="Path to input CSV")
-    common.add_argument("--outdir", required=True, help="Directory for outputs")
+    common.add_argument("--input", help="Path to input CSV")
+    common.add_argument("--outdir", help="Directory for outputs")
     common.add_argument(
         "--score-cols",
         nargs="*",
-        default=["phq9_total", "gad7_total"],
         help="Numeric score columns for descriptives/correlation/plots",
     )
     common.add_argument(
         "--skip-anon",
         action="store_true",
+        default=None,
         help="Skip anonymizing participant_id (default anonymizes when present)",
     )
 
@@ -107,9 +172,14 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None):
     parser = _build_parser()
     raw_args = list(sys.argv[1:] if argv is None else argv)
-    if not raw_args or raw_args[0].startswith("-"):
-        raw_args = ["run"] + raw_args
-    args = parser.parse_args(raw_args)
+    config_path, cleaned = _split_config_args(raw_args)
+    insert_default_command = not cleaned or cleaned[0].startswith("-")
+    if insert_default_command:
+        cleaned = ["run"] + cleaned
+    args = parser.parse_args(cleaned)
+    config = _load_config(config_path)
+    args = _merge_config(args, config, allow_command_override=insert_default_command)
+    args = _finalize_args(args, parser)
     command = args.command
     actions = {
         "clean": _run_clean,

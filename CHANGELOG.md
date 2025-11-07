@@ -9,6 +9,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Cronbach’s alpha (internal consistency)
 - Missingness detail report (count and percent per column)
 - CLI subcommands: `clean`, `stats`, `plot`, `run`
+- Config profile loading via `--config path/to/profile.toml`
 - Basic unit tests via `pytest` (CLI smoke test)
 
 ### Changed

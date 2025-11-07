@@ -49,3 +49,27 @@ def test_cli_smoke(tmp_path):
     run_cli(stats_only, "stats")
     assert (stats_only / "report.json").is_file()
     assert not (stats_only / "interim_clean.csv").exists()
+
+    config_out = tmp_path / "config_stats"
+    config_file = tmp_path / "profile.toml"
+    config_text = f"""
+[prdt]
+command = "stats"
+input = "{input_csv}"
+outdir = "{config_out}"
+score_cols = ["phq9_total", "gad7_total"]
+"""
+    config_file.write_text(config_text.strip(), encoding="utf-8")
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "prdt.cli",
+            "--config",
+            str(config_file),
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+    assert (config_out / "report.json").is_file()

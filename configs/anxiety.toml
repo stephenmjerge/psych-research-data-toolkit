@@ -1,0 +1,6 @@
+[prdt]
+command = "run"
+input = "../data/examples/surveys.csv"
+outdir = "../outputs/anxiety-profile"
+score_cols = ["phq9_total", "gad7_total"]
+skip_anon = false
