@@ -11,15 +11,35 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 
 ## Quickstart
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+1. **Create and activate a virtual environment** (keeps dependencies isolated):
 
-export PRDT_ANON_KEY="replace-with-a-long-random-string"
-python -m prdt.cli --input data/examples/surveys.csv --outdir outputs/run1 \
-  --score-cols phq9_total gad7_total
-```
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+2. **Install PRDT and its dependencies**:
+
+   ```bash
+   pip install -e .
+   ```
+
+3. **Set the anonymization key**. This secret is required whenever `participant_id` is present; the CLI will exit if it is missing. Generate a random value (example uses `openssl`) and export it before every session:
+
+   ```bash
+   export PRDT_ANON_KEY="$(openssl rand -hex 32)"
+   ```
+
+   On Windows PowerShell use: `setx PRDT_ANON_KEY (New-Guid)` and restart the shell.
+
+4. **Run the CLI** on the sample data to verify everything works:
+
+   ```bash
+   python -m prdt.cli --input data/examples/surveys.csv --outdir outputs/run1 \
+     --score-cols phq9_total gad7_total
+   ```
+
+If you prefer to install dependencies without editable mode, `pip install -r requirements.txt` also works, but the console script entry point (`prdt`) is only available after `pip install -e .` or `pip install .`.
 ### Outputs
 - `interim_clean.csv`
 - `report.json` (descriptives, correlations, missing)
