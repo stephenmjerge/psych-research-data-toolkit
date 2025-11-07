@@ -32,10 +32,12 @@ def test_cli_smoke(tmp_path):
 
     clean_csv = outdir / "interim_clean.csv"
     report_json = outdir / "report.json"
+    alerts_json = outdir / "alerts.json"
 
     assert clean_csv.is_file()
     assert report_json.is_file()
     assert any(outdir.glob("hist_*.png"))
+    assert not alerts_json.exists()
     assert (outdir / "missingness.png").is_file()
 
     report = json.loads(report_json.read_text())
@@ -90,6 +92,7 @@ mcdonald_omega_min = 0.95
         env=env,
     )
     assert (config_out / "report.json").is_file()
+    config_alerts = config_out / "alerts.json"
     config_report = json.loads((config_out / "report.json").read_text())
     scale_rel = config_report["scale_reliability"]
     alert_block = config_report["alerts"]
@@ -98,4 +101,5 @@ mcdonald_omega_min = 0.95
         assert meta["items"]
         assert meta["cronbach_alpha"] is None or isinstance(meta["cronbach_alpha"], float)
         assert meta["mcdonald_omega"] is None or isinstance(meta["mcdonald_omega"], float)
+    assert config_alerts.is_file()
     assert any(alert["type"] == "missingness" or alert["type"] == "reliability" for alert in alert_block)

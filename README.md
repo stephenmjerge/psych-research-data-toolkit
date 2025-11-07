@@ -86,10 +86,12 @@ If you prefer to install dependencies without editable mode, `pip install -r req
   - `type = "missingness"` when a column’s missing percent exceeds `missing_pct`.
   - `type = "reliability"` when Cronbach’s α or McDonald’s ω drops below the configured minimum (overall or per-scale).
 - Alerts are informational only; the CLI still writes outputs so you can review and decide on follow-up cleaning.
+- When alerts exist, the CLI prints a brief summary and writes `alerts.json` for quick review.
 
 ### Outputs
 - `interim_clean.csv`
 - `report.json` (descriptives, correlations, reliability, missing, alerts)
+- `alerts.json` (only created when thresholds trigger)
 - `hist_*.png`, `trend_*.png`, `missingness.png`
 
 ### Reproducibility & Safety

@@ -12,6 +12,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Config profile loading via `--config path/to/profile.toml`
 - Config-defined reliability scales (per-scale Cronbach’s alpha & McDonald’s ω)
 - Alert thresholds for missingness and reliability (reported in `report.json`)
+- `alerts.json` artifact + CLI summaries when thresholds trigger
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)

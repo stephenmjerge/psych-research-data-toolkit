@@ -93,7 +93,7 @@ def _write_clean_csv(df: pd.DataFrame, outdir: str) -> None:
 
 def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
                   scales: dict[str, list[str]] | None = None,
-                  alerts: dict[str, object] | None = None) -> None:
+                  alerts: dict[str, object] | None = None) -> list[dict[str, object]]:
     _validate_score_columns(df, cols)
     if scales:
         for name, items in scales.items():
@@ -104,6 +104,15 @@ def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
     _ensure_outdir(outdir)
     with open(os.path.join(outdir, "report.json"), "w") as f:
         json.dump(report, f, indent=2)
+    alert_items = report.get("alerts", []) or []
+    if alert_items:
+        with open(os.path.join(outdir, "alerts.json"), "w") as f:
+            json.dump(alert_items, f, indent=2)
+    else:
+        alerts_path = os.path.join(outdir, "alerts.json")
+        if os.path.exists(alerts_path):
+            os.remove(alerts_path)
+    return alert_items
 
 def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> None:
     _validate_score_columns(df, cols)
@@ -121,11 +130,29 @@ def _run_clean(args: argparse.Namespace) -> None:
     _write_clean_csv(df, args.outdir)
     print("[PRDT] saved: interim_clean.csv")
 
+def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
+    if not alerts:
+        return
+    print(f"[PRDT][alerts] {len(alerts)} issue(s) detected (see alerts.json):")
+    for alert in alerts[:5]:
+        if alert.get("type") == "missingness":
+            msg = (f"- Missingness: {alert.get('column')} "
+                   f"{alert.get('percent')}% ≥ {alert.get('threshold')}%")
+        elif alert.get("type") == "reliability":
+            msg = (f"- Reliability: {alert.get('target')} {alert.get('metric')}="
+                   f"{alert.get('value')} < {alert.get('threshold')}")
+        else:
+            msg = f"- {alert}"
+        print(msg)
+    if len(alerts) > 5:
+        print("  ...")
+
 def _run_stats(args: argparse.Namespace) -> None:
     df = _prepare_dataframe(args.input, args.skip_anon)
-    _write_report(df, args.score_cols, args.outdir,
-                  getattr(args, "scales", None), getattr(args, "alerts", None))
+    alerts = _write_report(df, args.score_cols, args.outdir,
+                           getattr(args, "scales", None), getattr(args, "alerts", None))
     print("[PRDT] saved: report.json")
+    _print_alert_summary(alerts)
 
 def _run_plot(args: argparse.Namespace) -> None:
     df = _prepare_dataframe(args.input, args.skip_anon)
@@ -135,10 +162,11 @@ def _run_plot(args: argparse.Namespace) -> None:
 def _run_full(args: argparse.Namespace) -> None:
     df = _prepare_dataframe(args.input, args.skip_anon)
     _write_clean_csv(df, args.outdir)
-    _write_report(df, args.score_cols, args.outdir,
-                  getattr(args, "scales", None), getattr(args, "alerts", None))
+    alerts = _write_report(df, args.score_cols, args.outdir,
+                           getattr(args, "scales", None), getattr(args, "alerts", None))
     _write_plots(df, args.score_cols, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
+    _print_alert_summary(alerts)
 
 def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
     config_path = None
