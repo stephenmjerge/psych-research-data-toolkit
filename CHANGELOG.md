@@ -6,7 +6,7 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
-- Cronbach’s alpha (internal consistency) [planned]
+- Cronbach’s alpha (internal consistency)
 - Missingness detail report (count and percent per column) [planned]
 - CLI subcommands: `clean`, `stats`, `plot` [planned]
 - Basic unit tests via `pytest` [planned]
@@ -38,4 +38,3 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 - Guidance to never commit PHI/PII and to externalize secrets via `PRDT_ANON_KEY`.
-

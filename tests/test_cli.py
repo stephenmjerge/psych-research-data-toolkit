@@ -36,6 +36,8 @@ def test_cli_smoke(tmp_path):
 
     report = json.loads(report_json.read_text())
     missing = report["missing"]
+    alpha = report["cronbach_alpha"]
     assert "count" in missing and "percent" in missing and "detail" in missing
     sample_col = missing["detail"][0]
     assert {"variable", "missing", "missing_pct"} <= sample_col.keys()
+    assert alpha is None or isinstance(alpha, float)
