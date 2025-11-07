@@ -7,12 +7,12 @@ and follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Added
 - Cronbach’s alpha (internal consistency)
-- Missingness detail report (count and percent per column) [planned]
-- CLI subcommands: `clean`, `stats`, `plot` [planned]
-- Basic unit tests via `pytest` [planned]
+- Missingness detail report (count and percent per column)
+- CLI subcommands: `clean`, `stats`, `plot`, `run`
+- Basic unit tests via `pytest` (CLI smoke test)
 
 ### Changed
-- Documentation improvements [planned]
+- README quickstart and command documentation
 
 ### Fixed
 - N/A
