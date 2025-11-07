@@ -81,6 +81,31 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 
 - Invoke with `prdt --config configs/anxiety.toml` (you can still override any option on the command line).
 
+## Example Run
+1. Ensure your virtualenv is active and `PRDT_ANON_KEY` is set (see Quickstart).
+2. Execute the bundled profile (mirrors a typical PHQ-9/GAD-7 workflow):
+
+   ```bash
+   prdt --config configs/anxiety.toml
+   ```
+
+3. Inspect outputs under `outputs/anxiety-profile/`:
+   - `interim_clean.csv`: cleaned + anonymized data.
+   - `report.json`: descriptives, correlations, reliability, missingness, alerts.
+   - `alerts.json`: only present when a threshold is exceeded.
+   - `hist_phq9_total.png`, `hist_gad7_total.png`, `trend_phq9_total.png`, `missingness.png`.
+
+Sample `alerts.json` (generated because every `note` entry is missing and GAD-7 reliability is low in the example data):
+
+```json
+[
+  {"type": "missingness", "column": "note", "percent": 100.0, "threshold": 10.0},
+  {"type": "reliability", "target": "gad7", "metric": "cronbach_alpha", "value": 0.0, "threshold": 0.75}
+]
+```
+
+The CLI also prints a short summary so you notice issues immediately.
+
 ## Alerts
 - `report.json` contains an `alerts` array. Each entry describes either:
   - `type = "missingness"` when a column’s missing percent exceeds `missing_pct`.
