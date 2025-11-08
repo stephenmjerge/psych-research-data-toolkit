@@ -28,6 +28,8 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 
    ```bash
    pip install -e .
+   # or use the pinned environment
+   pip install -r requirements-lock.txt
    ```
 
 3. **Set the anonymization key**. This secret is required whenever `participant_id` is present; the CLI will exit if it is missing. Generate a random value (example uses `openssl`) and export it before every session:
@@ -161,6 +163,16 @@ Run the same profile again after a new batch of data and PRDT will also emit `dr
 - `drift.json` (only created when scale means change ≥ 1 point vs prior run)
 - `hist_*.png`, `trend_*.png`, `missingness.png`
 - `scale_summary.png`, `scale_items_<scale>.png` (only when scale scoring is enabled)
+
+## Installing from a Wheel
+1. Build artifacts (already present under `dist/`, or run `python -m build`).
+2. Install the wheel anywhere—no repository clone required:
+
+   ```bash
+   pip install dist/prdt-0.1.0-py3-none-any.whl
+   ```
+
+Attach the wheel to GitHub Releases so reviewers can `pip install` PRDT directly.
 
 ### Reproducibility & Safety
 - Never commit PHI/PII; keep only synthetic data in-repo

@@ -23,6 +23,8 @@ and follows [Semantic Versioning](https://semver.org/).
 - Per-run manifest with config/input hashes (`run_manifest.json`)
 - PHI scanning/redaction with `phi_quarantine.csv` + alert entries
 - Configurable PHI scanner (extra regex, keywords, ignore/allow columns)
+- KEY handling guidance + guardrails (KEY_HANDLING.md, strong-key enforcement)
+- Pinned environment via `requirements-lock.txt` and distributable wheels (`python -m build`)
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)
