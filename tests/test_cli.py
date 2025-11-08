@@ -10,7 +10,7 @@ def test_cli_smoke(tmp_path):
     outdir = tmp_path / "run"
 
     env = os.environ.copy()
-    env["PRDT_ANON_KEY"] = "testkey"
+    env["PRDT_ANON_KEY"] = "this-is-a-secure-key-used-for-tests-1234567890abcdef"
 
     def run_cli(out_path: Path, *extra_args: str) -> None:
         cmd = [

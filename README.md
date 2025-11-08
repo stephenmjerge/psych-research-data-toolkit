@@ -165,6 +165,7 @@ Run the same profile again after a new batch of data and PRDT will also emit `dr
 ### Reproducibility & Safety
 - Never commit PHI/PII; keep only synthetic data in-repo
 - Externalize secrets via `PRDT_ANON_KEY`
+- Read `KEY_HANDLING.md` for best practices (long random key, `.env` usage, rotation)
 - Prefer small, incremental commits with clear messages
 - Record version/tags in release notes
 
