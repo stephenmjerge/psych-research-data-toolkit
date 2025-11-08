@@ -11,7 +11,7 @@ from .cleaning import basic_clean
 from .anonymize import anonymize_column
 from .stats import simple_report
 from .plots import save_histograms, save_trend, save_missingness_bar
-from .scales import apply_scale_scores
+from .scales import apply_scale_scores, ScaleDefinition
 from .schema import normalize_schema, validate_schema, build_data_dictionary
 from .phi import scan_phi_columns
 from . import __version__
@@ -96,6 +96,45 @@ def _normalize_alerts(raw_alerts: object) -> dict[str, object]:
 
     return alerts
 
+def _normalize_custom_scales(raw: object) -> dict[str, ScaleDefinition]:
+    if not isinstance(raw, dict):
+        return {}
+    custom: dict[str, ScaleDefinition] = {}
+    for name, payload in raw.items():
+        if not isinstance(payload, dict):
+            continue
+        items = payload.get("items")
+        if isinstance(items, str):
+            items_list = [items]
+        elif isinstance(items, list):
+            items_list = [str(i) for i in items]
+        else:
+            continue
+        method = payload.get("method", "sum")
+        reverse = payload.get("reverse")
+        if isinstance(reverse, str):
+            reverse = [reverse]
+        elif isinstance(reverse, list):
+            reverse = [str(r) for r in reverse]
+        else:
+            reverse = None
+        cutoffs = payload.get("cutoffs")
+        if not isinstance(cutoffs, dict):
+            cutoffs = None
+        min_item = payload.get("min_item")
+        max_item = payload.get("max_item")
+        custom[name] = ScaleDefinition(
+            name=name,
+            items=items_list,
+            method=method,
+            reverse=reverse,
+            min_item=min_item,
+            max_item=max_item,
+            cutoffs=cutoffs,
+            output=payload.get("output"),
+        )
+    return custom
+
 def _file_hash(path: str, chunk_size: int = 65536) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -108,7 +147,8 @@ def _file_hash(path: str, chunk_size: int = 65536) -> str:
 
 def _prepare_dataframe(path: str, skip_anon: bool,
                        score_scales: list[str] | None = None,
-                       schema_rules: dict[str, object] | None = None) -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame | None]:
+                       schema_rules: dict[str, object] | None = None,
+                       custom_scale_defs: dict[str, ScaleDefinition] | None = None) -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame | None]:
     df_raw = pd.read_csv(path)
     provenance = {
         "input_path": os.path.abspath(path),
@@ -125,7 +165,7 @@ def _prepare_dataframe(path: str, skip_anon: bool,
 
     scored = []
     if score_scales:
-        df, scored = apply_scale_scores(df, score_scales)
+        df, scored = apply_scale_scores(df, score_scales, custom_scale_defs)
         provenance["scales_scored"] = scored
 
     if schema_rules:
@@ -218,8 +258,13 @@ def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]:
     return produced
 
 def _run_clean(args: argparse.Namespace) -> None:
-    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
-                                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(
+        args.input,
+        args.skip_anon,
+        args.score_scales,
+        args.schema_rules,
+        getattr(args, "custom_scale_definitions", None),
+    )
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
     _write_phi_quarantine(phi_quarantine, args.outdir)
@@ -249,8 +294,13 @@ def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
         print("  ...")
 
 def _run_stats(args: argparse.Namespace) -> None:
-    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
-                                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(
+        args.input,
+        args.skip_anon,
+        args.score_scales,
+        args.schema_rules,
+        getattr(args, "custom_scale_definitions", None),
+    )
     _ensure_score_cols(args, provenance)
     _write_data_dictionary(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
@@ -268,8 +318,13 @@ def _run_stats(args: argparse.Namespace) -> None:
     _write_manifest(args.outdir, args, provenance, alerts, outputs)
 
 def _run_plot(args: argparse.Namespace) -> None:
-    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
-                                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(
+        args.input,
+        args.skip_anon,
+        args.score_scales,
+        args.schema_rules,
+        getattr(args, "custom_scale_definitions", None),
+    )
     _ensure_score_cols(args, provenance)
     plot_files = _write_plots(df, args.score_cols, args.outdir)
     _write_phi_quarantine(phi_quarantine, args.outdir)
@@ -280,8 +335,13 @@ def _run_plot(args: argparse.Namespace) -> None:
     _write_manifest(args.outdir, args, provenance, [], outputs)
 
 def _run_full(args: argparse.Namespace) -> None:
-    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
-                                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(
+        args.input,
+        args.skip_anon,
+        args.score_scales,
+        args.schema_rules,
+        getattr(args, "custom_scale_definitions", None),
+    )
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
@@ -349,7 +409,12 @@ def _load_config(path: str | None) -> tuple[dict[str, object], dict[str, str]]:
     else:
         data.pop("scales", None)
 
-    score_list = _normalize_score_request(data.get("score"))
+    score_entry = data.get("score")
+    custom_scale_defs = {}
+    if isinstance(score_entry, dict) and "definitions" in score_entry:
+        custom_scale_defs = _normalize_custom_scales(score_entry.get("definitions"))
+        data["custom_scale_definitions"] = custom_scale_defs
+    score_list = _normalize_score_request(score_entry)
     if score_list:
         data["score"] = score_list
     else:
@@ -383,6 +448,8 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_com
         setattr(args, "alerts", config["alerts"])
     if config.get("score") is not None:
         setattr(args, "score_scales", config["score"])
+    if config.get("custom_scale_definitions") is not None:
+        setattr(args, "custom_scale_definitions", config["custom_scale_definitions"])
     if config.get("schema") is not None:
         setattr(args, "schema_rules", config["schema"])
     return args
@@ -394,6 +461,8 @@ def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) ->
         args.alerts = None
     if not hasattr(args, "score_scales"):
         args.score_scales = None
+    if not hasattr(args, "custom_scale_definitions"):
+        args.custom_scale_definitions = None
     if not hasattr(args, "schema_rules"):
         args.schema_rules = None
     if args.score_cols is None:

@@ -45,23 +45,51 @@ SCALE_LIBRARY: dict[str, ScaleDefinition] = {
             "severe": "15-21",
         },
     ),
+    "pcl5": ScaleDefinition(
+        name="pcl5",
+        items=[f"pcl5_item{i}" for i in range(1, 21)],
+        method="sum",
+        min_item=0,
+        max_item=4,
+        cutoffs={
+            "subthreshold": "0-32",
+            "probable_ptsd": "33+",
+        },
+    ),
+    "audit": ScaleDefinition(
+        name="audit",
+        items=[f"audit_item{i}" for i in range(1, 11)],
+        method="sum",
+        min_item=0,
+        max_item=4,
+        cutoffs={
+            "low_risk": "0-7",
+            "hazardous": "8-15",
+            "possible_dependence": "16+",
+        },
+    ),
 }
 
 def available_scales() -> list[str]:
     return sorted(SCALE_LIBRARY.keys())
 
-def apply_scale_scores(df: pd.DataFrame, names: list[str]) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+def apply_scale_scores(df: pd.DataFrame, names: list[str],
+                       custom_definitions: dict[str, ScaleDefinition] | None = None) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """Compute requested scales and append columns."""
     if not names:
         return df, []
 
     df = df.copy()
     metadata: list[dict[str, Any]] = []
-    for name in names:
-        if name not in SCALE_LIBRARY:
-            raise SystemExit(f"[PRDT] Unknown scale '{name}'. Available: {', '.join(available_scales())}")
+    definitions: dict[str, ScaleDefinition] = {**SCALE_LIBRARY}
+    if custom_definitions:
+        definitions.update(custom_definitions)
 
-        definition = SCALE_LIBRARY[name]
+    for name in names:
+        if name not in definitions:
+            raise SystemExit(f"[PRDT] Unknown scale '{name}'. Available: {', '.join(sorted(definitions.keys()))}")
+
+        definition = definitions[name]
         items = [col for col in definition.items if col in df.columns]
         if len(items) != len(definition.items):
             missing = sorted(set(definition.items) - set(items))

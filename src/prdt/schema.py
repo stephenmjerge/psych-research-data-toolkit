@@ -12,6 +12,23 @@ def normalize_schema(raw: dict[str, Any] | None) -> dict[str, Any]:
     types = raw.get("types")
     if isinstance(types, dict):
         schema["types"] = {str(k): str(v).lower() for k, v in types.items()}
+    ranges = raw.get("ranges")
+    if isinstance(ranges, dict):
+        normalized: dict[str, dict[str, float]] = {}
+        for col, spec in ranges.items():
+            if not isinstance(spec, dict):
+                continue
+            entry: dict[str, float] = {}
+            min_val = spec.get("min")
+            max_val = spec.get("max")
+            if isinstance(min_val, (int, float)):
+                entry["min"] = float(min_val)
+            if isinstance(max_val, (int, float)):
+                entry["max"] = float(max_val)
+            if entry:
+                normalized[str(col)] = entry
+        if normalized:
+            schema["ranges"] = normalized
     return schema
 
 def validate_schema(df: pd.DataFrame, schema: dict[str, Any]) -> list[str]:
@@ -35,6 +52,25 @@ def validate_schema(df: pd.DataFrame, schema: dict[str, Any]) -> list[str]:
             coerced = pd.to_datetime(series, errors="coerce")
             if coerced.isna().all() and not series.isna().all():
                 messages.append(f"Column '{col}' cannot be parsed as dates.")
+    ranges = schema.get("ranges") or {}
+    for col, bounds in ranges.items():
+        if col not in df.columns:
+            messages.append(f"Column '{col}' missing (range rule).")
+            continue
+        series = pd.to_numeric(df[col], errors="coerce")
+        if series.isna().all() and not df[col].isna().all():
+            messages.append(f"Column '{col}' cannot be coerced for range checking.")
+            continue
+        min_val = bounds.get("min")
+        max_val = bounds.get("max")
+        if min_val is not None:
+            count = (series < min_val).sum()
+            if count:
+                messages.append(f"Column '{col}' has {int(count)} value(s) below {min_val}.")
+        if max_val is not None:
+            count = (series > max_val).sum()
+            if count:
+                messages.append(f"Column '{col}' has {int(count)} value(s) above {max_val}.")
     return messages
 
 def build_data_dictionary(df: pd.DataFrame) -> pd.DataFrame:

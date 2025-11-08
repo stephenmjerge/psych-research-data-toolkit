@@ -8,7 +8,7 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 - Descriptives, Pearson correlations, Cronbach’s alpha & McDonald’s ω (overall + per-scale), missingness counts + percents (JSON)  
 - Optional alert thresholds for reliability and column-level missingness  
 - Automatic PHI detector (emails/phones/SSNs/etc.) with quarantine + alerts  
-- Built-in scoring for PHQ-9 and GAD-7 (extendable scale library)
+- Built-in scoring for PHQ-9, GAD-7, PCL-5, AUDIT + custom scale definitions
 - Data dictionary + run manifest per execution for reproducibility  
 - Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
@@ -57,6 +57,7 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 ## Profiles (`--config`)
 - Create a TOML profile to avoid repeating CLI flags. Paths in the file are resolved relative to the config’s directory.
 - Define reliability groups under `[prdt.scales.<name>]` so each scale gets its own Cronbach’s alpha and McDonald’s ω entries in `report.json`.
+- Configure custom scale scoring under `[prdt.score]` and `[prdt.score.definitions.*]` (items, method, output column).
 - Configure alert thresholds under `[prdt.alerts]` to highlight high missingness or low reliability in `report.json`.
 - Example (`configs/anxiety.toml`):
 
@@ -69,7 +70,12 @@ If you prefer to install dependencies without editable mode, `pip install -r req
   skip_anon = false
 
   [prdt.score]
-  scales = ["phq9", "gad7"]
+  scales = ["phq9", "gad7", "phq2_custom"]
+
+  [prdt.score.definitions.phq2_custom]
+  items = ["phq9_item1", "phq9_item2"]
+  method = "sum"
+  output = "phq2_score"
 
   [prdt.scales.phq9]
   items = ["phq9_item1", "phq9_item2"]
@@ -90,7 +96,13 @@ If you prefer to install dependencies without editable mode, `pip install -r req
   [prdt.schema.types]
   phq9_item1 = "numeric"
   gad7_item1 = "numeric"
+
+  [prdt.schema.ranges.phq9_item1]
+  min = 0
+  max = 3
   ```
+
+- Add additional `prdt.schema.ranges.*` tables for any numeric column that must stay within known bounds (alerts and manifests report violations).
 
 - Invoke with `prdt --config configs/anxiety.toml` (you can still override any option on the command line).
 

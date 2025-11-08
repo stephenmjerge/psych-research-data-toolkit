@@ -76,7 +76,12 @@ input = "{input_csv}"
 outdir = "{config_out}"
 score_cols = ["phq9_total", "gad7_total"]
 [prdt.score]
-scales = ["phq9", "gad7"]
+scales = ["phq9", "gad7", "phq2_custom"]
+
+[prdt.score.definitions.phq2_custom]
+items = ["phq9_item1", "phq9_item2"]
+method = "sum"
+output = "phq2_score"
 [prdt.scales.phq9]
 items = ["phq9_item1", "phq9_item2"]
 
@@ -92,6 +97,10 @@ mcdonald_omega_min = 0.95
 
 [prdt.schema]
 required = ["participant_id"]
+
+[prdt.schema.ranges.phq9_item1]
+min = 0
+max = 3
 """
     config_file.write_text(config_text.strip(), encoding="utf-8")
     subprocess.run(
@@ -114,6 +123,7 @@ required = ["participant_id"]
     config_report = json.loads((config_out / "report.json").read_text())
     scale_rel = config_report["scale_reliability"]
     alert_block = config_report["alerts"]
+    descriptives = config_report["descriptives"]
     assert set(scale_rel.keys()) == {"phq9", "gad7"}
     for meta in scale_rel.values():
         assert meta["items"]
@@ -125,3 +135,4 @@ required = ["participant_id"]
     assert config_phi.is_file()
     assert any(alert["type"] in {"missingness", "reliability"} for alert in alert_block)
     assert any(alert.get("type") == "phi" for alert in alert_block)
+    assert any(entry.get("variable") == "phq2_score" for entry in descriptives)
