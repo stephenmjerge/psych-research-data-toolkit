@@ -17,6 +17,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Built-in scoring library now includes PHQ-9, GAD-7, PCL-5, AUDIT + custom definitions
 - Reliability analytics now output item-total correlations, alpha-if-item-dropped, and scale severity summaries
 - Drift detection comparing scale means across runs (writes `drift.json` and raises alerts)
+- Visualization refresh: scale summary + item-level plots (`scale_summary.png`, `scale_items_*.png`)
 - Optional schema validation + auto-generated `data_dictionary.csv`
 - Schema value-range validation with alert surfacing
 - Per-run manifest with config/input hashes (`run_manifest.json`)

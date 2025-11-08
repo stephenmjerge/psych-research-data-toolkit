@@ -160,6 +160,7 @@ Run the same profile again after a new batch of data and PRDT will also emit `dr
 - `phi_quarantine.csv` (only created when columns are removed for PHI risk)
 - `drift.json` (only created when scale means change ≥ 1 point vs prior run)
 - `hist_*.png`, `trend_*.png`, `missingness.png`
+- `scale_summary.png`, `scale_items_<scale>.png` (only when scale scoring is enabled)
 
 ### Reproducibility & Safety
 - Never commit PHI/PII; keep only synthetic data in-repo

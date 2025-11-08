@@ -36,6 +36,7 @@ def test_cli_smoke(tmp_path):
     dictionary_csv = outdir / "data_dictionary.csv"
     manifest_json = outdir / "run_manifest.json"
     phi_quarantine = outdir / "phi_quarantine.csv"
+    summary_png = outdir / "scale_summary.png"
 
     assert clean_csv.is_file()
     assert report_json.is_file()
@@ -45,6 +46,7 @@ def test_cli_smoke(tmp_path):
     assert dictionary_csv.is_file()
     assert manifest_json.is_file()
     assert phi_quarantine.is_file()
+    assert not summary_png.exists()  # no scale scoring configured
 
     report = json.loads(report_json.read_text())
     missing = report["missing"]
@@ -71,7 +73,7 @@ def test_cli_smoke(tmp_path):
     config_file = tmp_path / "profile.toml"
     config_text = f"""
 [prdt]
-command = "stats"
+command = "run"
 input = "{input_csv}"
 outdir = "{config_out}"
 score_cols = ["phq9_total", "gad7_total"]
@@ -124,6 +126,7 @@ ignore_columns = ["note"]
     config_manifest = config_out / "run_manifest.json"
     config_dictionary = config_out / "data_dictionary.csv"
     config_phi = config_out / "phi_quarantine.csv"
+    config_summary = config_out / "scale_summary.png"
     config_report = json.loads((config_out / "report.json").read_text())
     scale_rel = config_report["scale_reliability"]
     scale_scores = config_report["scale_scores"]
@@ -138,6 +141,8 @@ ignore_columns = ["note"]
     assert config_manifest.is_file()
     assert config_dictionary.is_file()
     assert config_phi.is_file()
+    assert config_summary.is_file()
+    assert any(config_out.glob("scale_items_*.png"))
     assert any(alert["type"] in {"missingness", "reliability"} for alert in alert_block)
     assert any(alert.get("type") == "phi" for alert in alert_block)
     assert any(score_entry.get("name") == "phq2_custom" for score_entry in scale_scores)

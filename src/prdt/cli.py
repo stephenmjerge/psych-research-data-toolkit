@@ -10,7 +10,14 @@ except ModuleNotFoundError:  # pragma: no cover
 from .cleaning import basic_clean
 from .anonymize import anonymize_column
 from .stats import simple_report
-from .plots import save_histograms, save_trend, save_missingness_bar
+from .plots import (
+    save_histograms,
+    save_trend,
+    save_missingness_bar,
+    save_scale_summary,
+    save_scale_item_bars,
+    _build_scale_scores_from_df,
+)
 from .scales import apply_scale_scores, ScaleDefinition
 from .schema import normalize_schema, validate_schema, build_data_dictionary
 from .phi import scan_phi_columns, PhiOptions
@@ -266,7 +273,13 @@ def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
     _persist_alerts(outdir, alert_items)
     return alert_items, report.get("scale_scores")
 
-def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]:
+def _write_plots(
+    df: pd.DataFrame,
+    cols: list[str],
+    outdir: str,
+    scale_scores: list[dict[str, object]] | None = None,
+    scale_metadata: list[dict[str, object]] | None = None,
+) -> list[str]:
     _validate_score_columns(df, cols)
     _ensure_outdir(outdir)
     produced = []
@@ -281,6 +294,17 @@ def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]:
     missing_file = save_missingness_bar(df, outdir)
     if missing_file:
         produced.append(missing_file)
+    summary_file = save_scale_summary(scale_scores, outdir) if scale_scores else None
+    if summary_file:
+        produced.append(summary_file)
+    if not scale_scores and scale_metadata:
+        computed_scores = _build_scale_scores_from_df(df, scale_metadata)
+        summary_file = save_scale_summary(computed_scores, outdir)
+        if summary_file:
+            produced.append(summary_file)
+            scale_scores = computed_scores
+    if scale_metadata:
+        produced.extend(save_scale_item_bars(df, scale_metadata, outdir))
     return produced
 
 def _run_clean(args: argparse.Namespace) -> None:
@@ -447,7 +471,12 @@ def _run_plot(args: argparse.Namespace) -> None:
         getattr(args, "phi_options", None),
     )
     _ensure_score_cols(args, provenance)
-    plot_files = _write_plots(df, args.score_cols, args.outdir)
+    plot_files = _write_plots(
+        df,
+        args.score_cols,
+        args.outdir,
+        scale_metadata=provenance.get("scales_scored"),
+    )
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: histogram(s) and trend plot (if feasible)")
     outputs = list(plot_files)
@@ -479,7 +508,13 @@ def _run_full(args: argparse.Namespace) -> None:
         extra_alerts=phi_alerts,
         scale_metadata=scale_metadata,
     )
-    plot_files = _write_plots(df, args.score_cols, args.outdir)
+    plot_files = _write_plots(
+        df,
+        args.score_cols,
+        args.outdir,
+        scale_scores=scale_scores,
+        scale_metadata=provenance.get("scales_scored"),
+    )
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
     outputs = ["interim_clean.csv", "data_dictionary.csv", "report.json"]
