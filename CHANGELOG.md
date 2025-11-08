@@ -19,6 +19,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Schema value-range validation with alert surfacing
 - Per-run manifest with config/input hashes (`run_manifest.json`)
 - PHI scanning/redaction with `phi_quarantine.csv` + alert entries
+- Configurable PHI scanner (extra regex, keywords, ignore/allow columns)
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)

@@ -100,6 +100,10 @@ If you prefer to install dependencies without editable mode, `pip install -r req
   [prdt.schema.ranges.phq9_item1]
   min = 0
   max = 3
+
+  [prdt.phi]
+  keywords = ["contact", "address"]
+  ignore_columns = ["note"]
   ```
 
 - Add additional `prdt.schema.ranges.*` tables for any numeric column that must stay within known bounds (alerts and manifests report violations).

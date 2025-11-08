@@ -13,7 +13,7 @@ from .stats import simple_report
 from .plots import save_histograms, save_trend, save_missingness_bar
 from .scales import apply_scale_scores, ScaleDefinition
 from .schema import normalize_schema, validate_schema, build_data_dictionary
-from .phi import scan_phi_columns
+from .phi import scan_phi_columns, PhiOptions
 from . import __version__
 
 def _validate_score_columns(df: pd.DataFrame, cols: list[str]) -> None:
@@ -135,6 +135,36 @@ def _normalize_custom_scales(raw: object) -> dict[str, ScaleDefinition]:
         )
     return custom
 
+def _normalize_phi_options(raw: object) -> PhiOptions | None:
+    if not isinstance(raw, dict):
+        return None
+    extra = raw.get("extra_patterns")
+    keywords = raw.get("keywords")
+    ignore = raw.get("ignore_columns")
+    allow = raw.get("allow_columns")
+
+    def _as_list(value: object) -> list[str] | None:
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [str(v) for v in value]
+        return None
+
+    options = PhiOptions(
+        extra_patterns=_as_list(extra),
+        keywords=_as_list(keywords),
+        ignore_columns=_as_list(ignore),
+        allow_columns=_as_list(allow),
+    )
+    if not any([
+        options.extra_patterns,
+        options.keywords,
+        options.ignore_columns,
+        options.allow_columns,
+    ]):
+        return None
+    return options
+
 def _file_hash(path: str, chunk_size: int = 65536) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -148,7 +178,8 @@ def _file_hash(path: str, chunk_size: int = 65536) -> str:
 def _prepare_dataframe(path: str, skip_anon: bool,
                        score_scales: list[str] | None = None,
                        schema_rules: dict[str, object] | None = None,
-                       custom_scale_defs: dict[str, ScaleDefinition] | None = None) -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame | None]:
+                       custom_scale_defs: dict[str, ScaleDefinition] | None = None,
+                       phi_options: PhiOptions | None = None) -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame | None]:
     df_raw = pd.read_csv(path)
     provenance = {
         "input_path": os.path.abspath(path),
@@ -159,7 +190,7 @@ def _prepare_dataframe(path: str, skip_anon: bool,
     if not skip_anon and "participant_id" in df.columns:
         df = anonymize_column(df, "participant_id", out_col="anon_id")
 
-    df, phi_flags, phi_quarantine = scan_phi_columns(df)
+    df, phi_flags, phi_quarantine = scan_phi_columns(df, phi_options)
     if phi_flags:
         provenance["phi_columns"] = phi_flags
 
@@ -264,6 +295,7 @@ def _run_clean(args: argparse.Namespace) -> None:
         args.score_scales,
         args.schema_rules,
         getattr(args, "custom_scale_definitions", None),
+        getattr(args, "phi_options", None),
     )
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
@@ -300,6 +332,7 @@ def _run_stats(args: argparse.Namespace) -> None:
         args.score_scales,
         args.schema_rules,
         getattr(args, "custom_scale_definitions", None),
+        getattr(args, "phi_options", None),
     )
     _ensure_score_cols(args, provenance)
     _write_data_dictionary(df, args.outdir)
@@ -324,6 +357,7 @@ def _run_plot(args: argparse.Namespace) -> None:
         args.score_scales,
         args.schema_rules,
         getattr(args, "custom_scale_definitions", None),
+        getattr(args, "phi_options", None),
     )
     _ensure_score_cols(args, provenance)
     plot_files = _write_plots(df, args.score_cols, args.outdir)
@@ -432,6 +466,12 @@ def _load_config(path: str | None) -> tuple[dict[str, object], dict[str, str]]:
     else:
         data.pop("schema", None)
 
+    phi_opts = _normalize_phi_options(data.get("phi"))
+    if phi_opts:
+        data["phi_options"] = phi_opts
+    else:
+        data.pop("phi_options", None)
+
     return data, config_meta
 
 def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_command_override: bool) -> argparse.Namespace:
@@ -452,6 +492,8 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_com
         setattr(args, "custom_scale_definitions", config["custom_scale_definitions"])
     if config.get("schema") is not None:
         setattr(args, "schema_rules", config["schema"])
+    if config.get("phi_options") is not None:
+        setattr(args, "phi_options", config["phi_options"])
     return args
 
 def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> argparse.Namespace:
@@ -465,6 +507,8 @@ def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) ->
         args.custom_scale_definitions = None
     if not hasattr(args, "schema_rules"):
         args.schema_rules = None
+    if not hasattr(args, "phi_options"):
+        args.phi_options = None
     if args.score_cols is None:
         args.score_cols = ["phq9_total", "gad7_total"]
     missing = [field for field in ("input", "outdir") if getattr(args, field) is None]

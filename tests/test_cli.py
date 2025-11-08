@@ -101,6 +101,10 @@ required = ["participant_id"]
 [prdt.schema.ranges.phq9_item1]
 min = 0
 max = 3
+
+[prdt.phi]
+keywords = ["contact"]
+ignore_columns = ["note"]
 """
     config_file.write_text(config_text.strip(), encoding="utf-8")
     subprocess.run(

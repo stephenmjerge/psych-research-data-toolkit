@@ -40,3 +40,7 @@ max = 3
 [prdt.schema.ranges.gad7_item1]
 min = 0
 max = 3
+
+[prdt.phi]
+keywords = ["contact"]
+ignore_columns = ["note"]
