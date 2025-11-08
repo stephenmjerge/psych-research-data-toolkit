@@ -13,6 +13,9 @@ and follows [Semantic Versioning](https://semver.org/).
 - Config-defined reliability scales (per-scale Cronbach’s alpha & McDonald’s ω)
 - Alert thresholds for missingness and reliability (reported in `report.json`)
 - `alerts.json` artifact + CLI summaries when thresholds trigger
+- Built-in PHQ-9/GAD-7 scale scoring engine
+- Optional schema validation + auto-generated `data_dictionary.csv`
+- Per-run manifest with config/input hashes (`run_manifest.json`)
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)

@@ -5,6 +5,9 @@ outdir = "../outputs/anxiety-profile"
 score_cols = ["phq9_total", "gad7_total"]
 skip_anon = false
 
+[prdt.score]
+scales = ["phq9", "gad7"]
+
 [prdt.scales.phq9]
 items = ["phq9_item1", "phq9_item2"]
 
@@ -17,3 +20,10 @@ missing_pct = 10
 [prdt.alerts.reliability]
 cronbach_alpha_min = 0.75
 mcdonald_omega_min = 0.75
+
+[prdt.schema]
+required = ["participant_id", "date"]
+
+[prdt.schema.types]
+phq9_item1 = "numeric"
+gad7_item1 = "numeric"

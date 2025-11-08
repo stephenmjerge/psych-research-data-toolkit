@@ -1,6 +1,7 @@
 from __future__ import annotations
-import argparse, os, json, sys
+import argparse, os, json, sys, hashlib, subprocess
 from pathlib import Path
+from datetime import datetime, timezone
 import pandas as pd
 try:
     import tomllib  # Python 3.11+
@@ -10,6 +11,9 @@ from .cleaning import basic_clean
 from .anonymize import anonymize_column
 from .stats import simple_report
 from .plots import save_histograms, save_trend, save_missingness_bar
+from .scales import apply_scale_scores
+from .schema import normalize_schema, validate_schema, build_data_dictionary
+from . import __version__
 
 def _validate_score_columns(df: pd.DataFrame, cols: list[str]) -> None:
     """Ensure requested score columns exist and contain numeric data."""
@@ -55,6 +59,20 @@ def _normalize_scales(raw_scales: object) -> dict[str, list[str]]:
 
     return normalized
 
+def _normalize_score_request(raw_score: object) -> list[str]:
+    if raw_score is None:
+        return []
+    if isinstance(raw_score, dict):
+        values = raw_score.get("scales")
+    else:
+        values = raw_score
+
+    if isinstance(values, str):
+        return [values]
+    if isinstance(values, list):
+        return [str(v) for v in values]
+    return []
+
 def _normalize_alerts(raw_alerts: object) -> dict[str, object]:
     if not isinstance(raw_alerts, dict):
         return {}
@@ -77,19 +95,54 @@ def _normalize_alerts(raw_alerts: object) -> dict[str, object]:
 
     return alerts
 
-def _prepare_dataframe(path: str, skip_anon: bool) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df = basic_clean(df)
+def _file_hash(path: str, chunk_size: int = 65536) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+def _prepare_dataframe(path: str, skip_anon: bool,
+                       score_scales: list[str] | None = None,
+                       schema_rules: dict[str, object] | None = None) -> tuple[pd.DataFrame, dict[str, object]]:
+    df_raw = pd.read_csv(path)
+    provenance = {
+        "input_path": os.path.abspath(path),
+        "input_hash": _file_hash(path),
+        "raw_rows": len(df_raw),
+    }
+    df = basic_clean(df_raw)
     if not skip_anon and "participant_id" in df.columns:
         df = anonymize_column(df, "participant_id", out_col="anon_id")
-    return df
+
+    scored = []
+    if score_scales:
+        df, scored = apply_scale_scores(df, score_scales)
+        provenance["scales_scored"] = scored
+
+    if schema_rules:
+        schema_messages = validate_schema(df, schema_rules)
+        if schema_messages:
+            provenance["schema_messages"] = schema_messages
+
+    provenance["post_clean_rows"] = len(df)
+    return df, provenance
 
 def _ensure_outdir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
+def _write_data_dictionary(df: pd.DataFrame, outdir: str) -> None:
+    _ensure_outdir(outdir)
+    dictionary = build_data_dictionary(df)
+    dictionary.to_csv(os.path.join(outdir, "data_dictionary.csv"), index=False)
+
 def _write_clean_csv(df: pd.DataFrame, outdir: str) -> None:
     _ensure_outdir(outdir)
     df.to_csv(os.path.join(outdir, "interim_clean.csv"), index=False)
+    _write_data_dictionary(df, outdir)
 
 def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
                   scales: dict[str, list[str]] | None = None,
@@ -114,21 +167,30 @@ def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
             os.remove(alerts_path)
     return alert_items
 
-def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> None:
+def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]:
     _validate_score_columns(df, cols)
     _ensure_outdir(outdir)
-    save_histograms(df, cols, outdir)
+    produced = []
+    produced.extend(save_histograms(df, cols, outdir))
     value_col = cols[0]
     time_col = "date" if "date" in df.columns else None
     id_col = "anon_id" if "anon_id" in df.columns else ("participant_id" if "participant_id" in df.columns else None)
     if time_col and id_col:
-        save_trend(df, id_col, time_col, value_col, outdir)
-    save_missingness_bar(df, outdir)
+        trend_file = save_trend(df, id_col, time_col, value_col, outdir)
+        if trend_file:
+            produced.append(trend_file)
+    missing_file = save_missingness_bar(df, outdir)
+    if missing_file:
+        produced.append(missing_file)
+    return produced
 
 def _run_clean(args: argparse.Namespace) -> None:
-    df = _prepare_dataframe(args.input, args.skip_anon)
+    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
+                                        args.score_scales, args.schema_rules)
+    _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
     print("[PRDT] saved: interim_clean.csv")
+    _write_manifest(args.outdir, args, provenance, [], ["interim_clean.csv", "data_dictionary.csv"])
 
 def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
     if not alerts:
@@ -148,25 +210,42 @@ def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
         print("  ...")
 
 def _run_stats(args: argparse.Namespace) -> None:
-    df = _prepare_dataframe(args.input, args.skip_anon)
+    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
+                                        args.score_scales, args.schema_rules)
+    _ensure_score_cols(args, provenance)
+    _write_data_dictionary(df, args.outdir)
     alerts = _write_report(df, args.score_cols, args.outdir,
                            getattr(args, "scales", None), getattr(args, "alerts", None))
     print("[PRDT] saved: report.json")
     _print_alert_summary(alerts)
+    outputs = ["report.json", "data_dictionary.csv"]
+    if alerts:
+        outputs.append("alerts.json")
+    _write_manifest(args.outdir, args, provenance, alerts, outputs)
 
 def _run_plot(args: argparse.Namespace) -> None:
-    df = _prepare_dataframe(args.input, args.skip_anon)
-    _write_plots(df, args.score_cols, args.outdir)
+    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
+                                        args.score_scales, args.schema_rules)
+    _ensure_score_cols(args, provenance)
+    plot_files = _write_plots(df, args.score_cols, args.outdir)
     print("[PRDT] saved: histogram(s) and trend plot (if feasible)")
+    _write_manifest(args.outdir, args, provenance, [], plot_files)
 
 def _run_full(args: argparse.Namespace) -> None:
-    df = _prepare_dataframe(args.input, args.skip_anon)
+    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
+                                        args.score_scales, args.schema_rules)
+    _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
     alerts = _write_report(df, args.score_cols, args.outdir,
                            getattr(args, "scales", None), getattr(args, "alerts", None))
-    _write_plots(df, args.score_cols, args.outdir)
+    plot_files = _write_plots(df, args.score_cols, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
     _print_alert_summary(alerts)
+    outputs = ["interim_clean.csv", "data_dictionary.csv", "report.json"]
+    if alerts:
+        outputs.append("alerts.json")
+    outputs.extend(plot_files)
+    _write_manifest(args.outdir, args, provenance, alerts, outputs)
 
 def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
     config_path = None
@@ -186,14 +265,18 @@ def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
         cleaned.append(arg)
     return config_path, cleaned
 
-def _load_config(path: str | None) -> dict[str, object]:
+def _load_config(path: str | None) -> tuple[dict[str, object], dict[str, str]]:
     if not path:
-        return {}
+        return {}, {}
     cfg_path = Path(path).expanduser()
     if not cfg_path.exists():
         raise SystemExit(f"[PRDT] Config file not found: {path}")
-    with cfg_path.open("rb") as f:
-        data = tomllib.load(f)
+    content = cfg_path.read_bytes()
+    data = tomllib.loads(content.decode())
+    config_meta = {
+        "path": str(cfg_path),
+        "hash": hashlib.sha256(content).hexdigest(),
+    }
     profile = data.get("prdt") if isinstance(data, dict) else None
     if isinstance(profile, dict):
         data = profile
@@ -213,13 +296,25 @@ def _load_config(path: str | None) -> dict[str, object]:
     else:
         data.pop("scales", None)
 
+    score_list = _normalize_score_request(data.get("score"))
+    if score_list:
+        data["score"] = score_list
+    else:
+        data.pop("score", None)
+
     normalized_alerts = _normalize_alerts(data.get("alerts"))
     if normalized_alerts:
         data["alerts"] = normalized_alerts
     else:
         data.pop("alerts", None)
 
-    return data
+    schema_cfg = normalize_schema(data.get("schema"))
+    if schema_cfg:
+        data["schema"] = schema_cfg
+    else:
+        data.pop("schema", None)
+
+    return data, config_meta
 
 def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_command_override: bool) -> argparse.Namespace:
     if not config:
@@ -233,6 +328,10 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_com
         setattr(args, "scales", config["scales"])
     if config.get("alerts") is not None:
         setattr(args, "alerts", config["alerts"])
+    if config.get("score") is not None:
+        setattr(args, "score_scales", config["score"])
+    if config.get("schema") is not None:
+        setattr(args, "schema_rules", config["schema"])
     return args
 
 def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> argparse.Namespace:
@@ -240,6 +339,10 @@ def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) ->
         args.scales = None
     if not hasattr(args, "alerts"):
         args.alerts = None
+    if not hasattr(args, "score_scales"):
+        args.score_scales = None
+    if not hasattr(args, "schema_rules"):
+        args.schema_rules = None
     if args.score_cols is None:
         args.score_cols = ["phq9_total", "gad7_total"]
     missing = [field for field in ("input", "outdir") if getattr(args, field) is None]
@@ -283,9 +386,11 @@ def main(argv: list[str] | None = None):
     if insert_default_command:
         cleaned = ["run"] + cleaned
     args = parser.parse_args(cleaned)
-    config = _load_config(config_path)
+    config, config_meta = _load_config(config_path)
     args = _merge_config(args, config, allow_command_override=insert_default_command)
     args = _finalize_args(args, parser)
+    args._config_path = config_meta.get("path")
+    args._config_hash = config_meta.get("hash")
     command = args.command
     actions = {
         "clean": _run_clean,
@@ -297,6 +402,50 @@ def main(argv: list[str] | None = None):
     if not action:
         parser.error(f"Unknown command: {command}")
     action(args)
+
+def _git_sha() -> str | None:
+    try:
+        result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except Exception:
+        return None
+
+def _write_manifest(outdir: str, args: argparse.Namespace, provenance: dict[str, object],
+                    alerts: list[dict[str, object]], outputs: list[str]) -> None:
+    manifest = {
+        "prdt_version": __version__,
+        "git_sha": _git_sha(),
+        "run_at": datetime.now(timezone.utc).isoformat(),
+        "command": args.command,
+        "score_scales": args.score_scales,
+        "config_path": getattr(args, "_config_path", None),
+        "config_hash": getattr(args, "_config_hash", None),
+        "input": {
+            "path": provenance.get("input_path"),
+            "sha256": provenance.get("input_hash"),
+            "raw_rows": provenance.get("raw_rows"),
+            "post_clean_rows": provenance.get("post_clean_rows"),
+        },
+        "schema_messages": provenance.get("schema_messages"),
+        "scales_scored": provenance.get("scales_scored"),
+        "alerts_count": len(alerts),
+        "outputs": sorted(set(outputs)),
+        "python_version": sys.version,
+    }
+    _ensure_outdir(outdir)
+    with open(os.path.join(outdir, "run_manifest.json"), "w") as f:
+        json.dump(manifest, f, indent=2)
+
+def _ensure_score_cols(args: argparse.Namespace, provenance: dict[str, object]) -> None:
+    scored = provenance.get("scales_scored") or []
+    if not isinstance(scored, list):
+        return
+    for entry in scored:
+        if not isinstance(entry, dict):
+            continue
+        col = entry.get("output_column")
+        if col and col not in args.score_cols:
+            args.score_cols.append(col)
 
 if __name__ == "__main__":
     main()

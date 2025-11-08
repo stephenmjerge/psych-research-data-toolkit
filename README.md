@@ -7,6 +7,8 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 - HMAC-based ID anonymization via `PRDT_ANON_KEY`  
 - Descriptives, Pearson correlations, Cronbach’s alpha & McDonald’s ω (overall + per-scale), missingness counts + percents (JSON)  
 - Optional alert thresholds for reliability and column-level missingness  
+- Built-in scoring for PHQ-9 and GAD-7 (extendable scale library)
+- Data dictionary + run manifest per execution for reproducibility  
 - Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
 - CLI subcommands for focused workflows (`clean`, `stats`, `plot`, `run`)  
@@ -65,6 +67,9 @@ If you prefer to install dependencies without editable mode, `pip install -r req
   score_cols = ["phq9_total", "gad7_total"]
   skip_anon = false
 
+  [prdt.score]
+  scales = ["phq9", "gad7"]
+
   [prdt.scales.phq9]
   items = ["phq9_item1", "phq9_item2"]
 
@@ -77,6 +82,13 @@ If you prefer to install dependencies without editable mode, `pip install -r req
   [prdt.alerts.reliability]
   cronbach_alpha_min = 0.75
   mcdonald_omega_min = 0.75
+
+  [prdt.schema]
+  required = ["participant_id", "date"]
+
+  [prdt.schema.types]
+  phq9_item1 = "numeric"
+  gad7_item1 = "numeric"
   ```
 
 - Invoke with `prdt --config configs/anxiety.toml` (you can still override any option on the command line).
@@ -93,6 +105,8 @@ If you prefer to install dependencies without editable mode, `pip install -r req
    - `interim_clean.csv`: cleaned + anonymized data.
    - `report.json`: descriptives, correlations, reliability, missingness, alerts.
    - `alerts.json`: only present when a threshold is exceeded.
+   - `data_dictionary.csv`: snapshot of every column’s dtype and completeness.
+   - `run_manifest.json`: provenance (version, git SHA, config hash, input hash, timestamps).
    - `hist_phq9_total.png`, `hist_gad7_total.png`, `trend_phq9_total.png`, `missingness.png`.
 
 Sample `alerts.json` (generated because every `note` entry is missing and GAD-7 reliability is low in the example data):
@@ -117,6 +131,8 @@ The CLI also prints a short summary so you notice issues immediately.
 - `interim_clean.csv`
 - `report.json` (descriptives, correlations, reliability, missing, alerts)
 - `alerts.json` (only created when thresholds trigger)
+- `data_dictionary.csv` (column name, dtype, missing pct, example)
+- `run_manifest.json` (PRDT version, git SHA, config hash, input hash)
 - `hist_*.png`, `trend_*.png`, `missingness.png`
 
 ### Reproducibility & Safety

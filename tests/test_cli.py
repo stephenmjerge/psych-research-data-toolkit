@@ -65,6 +65,8 @@ command = "stats"
 input = "{input_csv}"
 outdir = "{config_out}"
 score_cols = ["phq9_total", "gad7_total"]
+[prdt.score]
+scales = ["phq9", "gad7"]
 [prdt.scales.phq9]
 items = ["phq9_item1", "phq9_item2"]
 
@@ -77,6 +79,9 @@ missing_pct = 0.0
 [prdt.alerts.reliability]
 cronbach_alpha_min = 0.95
 mcdonald_omega_min = 0.95
+
+[prdt.schema]
+required = ["participant_id"]
 """
     config_file.write_text(config_text.strip(), encoding="utf-8")
     subprocess.run(
@@ -93,6 +98,8 @@ mcdonald_omega_min = 0.95
     )
     assert (config_out / "report.json").is_file()
     config_alerts = config_out / "alerts.json"
+    config_manifest = config_out / "run_manifest.json"
+    config_dictionary = config_out / "data_dictionary.csv"
     config_report = json.loads((config_out / "report.json").read_text())
     scale_rel = config_report["scale_reliability"]
     alert_block = config_report["alerts"]
@@ -102,4 +109,6 @@ mcdonald_omega_min = 0.95
         assert meta["cronbach_alpha"] is None or isinstance(meta["cronbach_alpha"], float)
         assert meta["mcdonald_omega"] is None or isinstance(meta["mcdonald_omega"], float)
     assert config_alerts.is_file()
+    assert config_manifest.is_file()
+    assert config_dictionary.is_file()
     assert any(alert["type"] == "missingness" or alert["type"] == "reliability" for alert in alert_block)
