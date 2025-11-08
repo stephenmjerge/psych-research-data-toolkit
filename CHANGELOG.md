@@ -28,6 +28,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)
+- `/docs` folder with walkthrough, concepts, and non-technical quickstart guides
 
 ### Changed
 - README quickstart and command documentation

@@ -145,6 +145,9 @@ The CLI also prints a short summary so you notice issues immediately.
 
 Run the same profile again after a new batch of data and PRDT will also emit `drift.json` whenever a scale’s mean shifts by ≥1 point compared with the previous run.
 
+## Documentation
+- [/docs/README.md](docs/README.md): links to a non-technical walkthrough, concept notes, and a copy/paste quickstart for new teammates or admissions reviewers.
+
 ## Alerts
 - `report.json` contains an `alerts` array. Each entry describes either:
   - `type = "missingness"` when a column’s missing percent exceeds `missing_pct`.
