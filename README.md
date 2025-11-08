@@ -10,6 +10,7 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 - Automatic PHI detector (emails/phones/SSNs/etc.) with quarantine + alerts  
 - Built-in scoring for PHQ-9, GAD-7, PCL-5, AUDIT + custom scale definitions (alpha, omega, item-total stats)
 - Data dictionary + run manifest per execution for reproducibility  
+- Drift detection compares scale means vs last run (`drift.json` + alerts)  
 - Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
 - CLI subcommands for focused workflows (`clean`, `stats`, `plot`, `run`)  
@@ -140,6 +141,8 @@ Sample `alerts.json` (generated because every `note` entry is missing, GAD-7 rel
 
 The CLI also prints a short summary so you notice issues immediately.
 
+Run the same profile again after a new batch of data and PRDT will also emit `drift.json` whenever a scale’s mean shifts by ≥1 point compared with the previous run.
+
 ## Alerts
 - `report.json` contains an `alerts` array. Each entry describes either:
   - `type = "missingness"` when a column’s missing percent exceeds `missing_pct`.
@@ -155,6 +158,7 @@ The CLI also prints a short summary so you notice issues immediately.
 - `data_dictionary.csv` (column name, dtype, missing pct, example)
 - `run_manifest.json` (PRDT version, git SHA, config hash, input hash)
 - `phi_quarantine.csv` (only created when columns are removed for PHI risk)
+- `drift.json` (only created when scale means change ≥ 1 point vs prior run)
 - `hist_*.png`, `trend_*.png`, `missingness.png`
 
 ### Reproducibility & Safety

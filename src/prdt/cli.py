@@ -248,7 +248,7 @@ def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
                   scales: dict[str, list[str]] | None = None,
                   alerts: dict[str, object] | None = None,
                   extra_alerts: list[dict[str, object]] | None = None,
-                  scale_metadata: list[dict[str, object]] | None = None) -> list[dict[str, object]]:
+                  scale_metadata: list[dict[str, object]] | None = None) -> tuple[list[dict[str, object]], list[dict[str, object]] | None]:
     _validate_score_columns(df, cols)
     if scales:
         for name, items in scales.items():
@@ -263,14 +263,8 @@ def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
     _ensure_outdir(outdir)
     with open(os.path.join(outdir, "report.json"), "w") as f:
         json.dump(report, f, indent=2)
-    if alert_items:
-        with open(os.path.join(outdir, "alerts.json"), "w") as f:
-            json.dump(alert_items, f, indent=2)
-    else:
-        alerts_path = os.path.join(outdir, "alerts.json")
-        if os.path.exists(alerts_path):
-            os.remove(alerts_path)
-    return alert_items
+    _persist_alerts(outdir, alert_items)
+    return alert_items, report.get("scale_scores")
 
 def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]:
     _validate_score_columns(df, cols)
@@ -305,7 +299,10 @@ def _run_clean(args: argparse.Namespace) -> None:
     outputs = ["interim_clean.csv", "data_dictionary.csv"]
     if phi_quarantine is not None and not phi_quarantine.empty:
         outputs.append("phi_quarantine.csv")
-    _write_manifest(args.outdir, args, provenance, [], outputs)
+    manifest_path, manifest_data = _write_manifest(args.outdir, args, provenance, [], outputs, None)
+    drift_alerts = _run_drift_check(args.outdir, manifest_path, manifest_data)
+    if drift_alerts:
+        _persist_alerts(args.outdir, drift_alerts)
 
 def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
     if not alerts:
@@ -326,6 +323,83 @@ def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
     if len(alerts) > 5:
         print("  ...")
 
+def _persist_alerts(outdir: str, alerts: list[dict[str, object]]) -> None:
+    path = os.path.join(outdir, "alerts.json")
+    if alerts:
+        _ensure_outdir(outdir)
+        with open(path, "w") as f:
+            json.dump(alerts, f, indent=2)
+    else:
+        if os.path.exists(path):
+            os.remove(path)
+
+def _previous_manifest(outdir: str, current_manifest: str) -> str | None:
+    manifests = sorted(Path(outdir).glob("run_manifest_*.json"), key=os.path.getmtime)
+    if not manifests:
+        return None
+    if len(manifests) == 1:
+        return None
+    prev = manifests[-2]
+    if str(prev) == current_manifest:
+        return None
+    return str(prev)
+
+def _load_manifest(path: str) -> dict | None:
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+DRIFT_DELTA_THRESHOLD = 1.0
+
+def _run_drift_check(outdir: str, manifest_path: str, manifest_data: dict) -> list[dict[str, object]]:
+    previous_path = _previous_manifest(outdir, manifest_path)
+    if not previous_path:
+        return []
+    previous = _load_manifest(previous_path)
+    if not previous:
+        return []
+
+    current_scores = manifest_data.get("scale_scores") or []
+    previous_scores = previous.get("scale_scores") or []
+    if not current_scores or not previous_scores:
+        return []
+
+    prev_lookup = {entry.get("name"): entry for entry in previous_scores if isinstance(entry, dict)}
+    drift_records = []
+    alerts: list[dict[str, object]] = []
+    for entry in current_scores:
+        name = entry.get("name")
+        if not name or name not in prev_lookup:
+            continue
+        prev_entry = prev_lookup[name]
+        change = (entry.get("mean") or 0) - (prev_entry.get("mean") or 0)
+        if abs(change) < DRIFT_DELTA_THRESHOLD:
+            continue
+        record = {
+            "scale": name,
+            "previous_mean": prev_entry.get("mean"),
+            "current_mean": entry.get("mean"),
+            "delta": change,
+        }
+        drift_records.append(record)
+        alerts.append({
+            "type": "drift",
+            "scale": name,
+            "delta": change,
+            "message": f"{name} mean changed by {change:.2f} vs last run",
+        })
+
+    drift_path = os.path.join(outdir, "drift.json")
+    if drift_records:
+        with open(drift_path, "w") as f:
+            json.dump(drift_records, f, indent=2)
+    else:
+        if os.path.exists(drift_path):
+            os.remove(drift_path)
+    return alerts
+
 def _run_stats(args: argparse.Namespace) -> None:
     df, provenance, phi_quarantine = _prepare_dataframe(
         args.input,
@@ -339,7 +413,7 @@ def _run_stats(args: argparse.Namespace) -> None:
     _write_data_dictionary(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
     scale_metadata = provenance.get("scales_scored")
-    alerts = _write_report(
+    alerts, scale_scores = _write_report(
         df,
         args.score_cols,
         args.outdir,
@@ -350,13 +424,18 @@ def _run_stats(args: argparse.Namespace) -> None:
     )
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: report.json")
-    _print_alert_summary(alerts)
     outputs = ["report.json", "data_dictionary.csv"]
     if alerts:
         outputs.append("alerts.json")
     if phi_quarantine is not None and not phi_quarantine.empty:
         outputs.append("phi_quarantine.csv")
-    _write_manifest(args.outdir, args, provenance, alerts, outputs)
+    manifest_path, manifest_data = _write_manifest(args.outdir, args, provenance, alerts, outputs, scale_scores)
+    drift_alerts = _run_drift_check(args.outdir, manifest_path, manifest_data)
+    if drift_alerts:
+        alerts.extend(drift_alerts)
+        _persist_alerts(args.outdir, alerts)
+    _print_alert_summary(alerts)
+    _print_alert_summary(alerts)
 
 def _run_plot(args: argparse.Namespace) -> None:
     df, provenance, phi_quarantine = _prepare_dataframe(
@@ -374,7 +453,10 @@ def _run_plot(args: argparse.Namespace) -> None:
     outputs = list(plot_files)
     if phi_quarantine is not None and not phi_quarantine.empty:
         outputs.append("phi_quarantine.csv")
-    _write_manifest(args.outdir, args, provenance, [], outputs)
+    manifest_path, manifest_data = _write_manifest(args.outdir, args, provenance, [], outputs, None)
+    drift_alerts = _run_drift_check(args.outdir, manifest_path, manifest_data)
+    if drift_alerts:
+        _persist_alerts(args.outdir, drift_alerts)
 
 def _run_full(args: argparse.Namespace) -> None:
     df, provenance, phi_quarantine = _prepare_dataframe(
@@ -388,7 +470,7 @@ def _run_full(args: argparse.Namespace) -> None:
     _write_clean_csv(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
     scale_metadata = provenance.get("scales_scored")
-    alerts = _write_report(
+    alerts, scale_scores = _write_report(
         df,
         args.score_cols,
         args.outdir,
@@ -400,14 +482,17 @@ def _run_full(args: argparse.Namespace) -> None:
     plot_files = _write_plots(df, args.score_cols, args.outdir)
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
-    _print_alert_summary(alerts)
     outputs = ["interim_clean.csv", "data_dictionary.csv", "report.json"]
     if alerts:
         outputs.append("alerts.json")
     outputs.extend(plot_files)
     if phi_quarantine is not None and not phi_quarantine.empty:
         outputs.append("phi_quarantine.csv")
-    _write_manifest(args.outdir, args, provenance, alerts, outputs)
+    manifest_path, manifest_data = _write_manifest(args.outdir, args, provenance, alerts, outputs, scale_scores)
+    drift_alerts = _run_drift_check(args.outdir, manifest_path, manifest_data)
+    if drift_alerts:
+        alerts.extend(drift_alerts)
+        _persist_alerts(args.outdir, alerts)
 
 def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
     config_path = None
@@ -592,7 +677,8 @@ def _git_sha() -> str | None:
         return None
 
 def _write_manifest(outdir: str, args: argparse.Namespace, provenance: dict[str, object],
-                    alerts: list[dict[str, object]], outputs: list[str]) -> None:
+                    alerts: list[dict[str, object]], outputs: list[str],
+                    scale_scores: list[dict[str, object]] | None = None) -> tuple[str, dict]:
     manifest = {
         "prdt_version": __version__,
         "git_sha": _git_sha(),
@@ -612,11 +698,18 @@ def _write_manifest(outdir: str, args: argparse.Namespace, provenance: dict[str,
         "phi_flags": provenance.get("phi_columns"),
         "alerts_count": len(alerts),
         "outputs": sorted(set(outputs)),
+        "scale_scores": scale_scores,
         "python_version": sys.version,
     }
     _ensure_outdir(outdir)
-    with open(os.path.join(outdir, "run_manifest.json"), "w") as f:
+    latest_path = os.path.join(outdir, "run_manifest.json")
+    with open(latest_path, "w") as f:
         json.dump(manifest, f, indent=2)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    versioned_path = os.path.join(outdir, f"run_manifest_{stamp}.json")
+    with open(versioned_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+    return versioned_path, manifest
 
 def _ensure_score_cols(args: argparse.Namespace, provenance: dict[str, object]) -> None:
     scored = provenance.get("scales_scored") or []
