@@ -7,6 +7,7 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 - HMAC-based ID anonymization via `PRDT_ANON_KEY`  
 - Descriptives, Pearson correlations, Cronbach’s alpha & McDonald’s ω (overall + per-scale), missingness counts + percents (JSON)  
 - Optional alert thresholds for reliability and column-level missingness  
+- Automatic PHI detector (emails/phones/SSNs/etc.) with quarantine + alerts  
 - Built-in scoring for PHQ-9 and GAD-7 (extendable scale library)
 - Data dictionary + run manifest per execution for reproducibility  
 - Histograms for selected score columns + missingness bar chart  
@@ -107,14 +108,16 @@ If you prefer to install dependencies without editable mode, `pip install -r req
    - `alerts.json`: only present when a threshold is exceeded.
    - `data_dictionary.csv`: snapshot of every column’s dtype and completeness.
    - `run_manifest.json`: provenance (version, git SHA, config hash, input hash, timestamps).
+   - `phi_quarantine.csv`: columns removed for PHI risk (e.g., emails in `contact`).
    - `hist_phq9_total.png`, `hist_gad7_total.png`, `trend_phq9_total.png`, `missingness.png`.
 
-Sample `alerts.json` (generated because every `note` entry is missing and GAD-7 reliability is low in the example data):
+Sample `alerts.json` (generated because every `note` entry is missing, GAD-7 reliability is low, and contact info contains emails in the example data):
 
 ```json
 [
   {"type": "missingness", "column": "note", "percent": 100.0, "threshold": 10.0},
-  {"type": "reliability", "target": "gad7", "metric": "cronbach_alpha", "value": 0.0, "threshold": 0.75}
+  {"type": "reliability", "target": "gad7", "metric": "cronbach_alpha", "value": 0.0, "threshold": 0.75},
+  {"type": "phi", "column": "contact", "matches": [{"pattern": "email", "count": 2}], "message": "PHI-like data detected in column 'contact'. Column removed from outputs."}
 ]
 ```
 
@@ -124,6 +127,7 @@ The CLI also prints a short summary so you notice issues immediately.
 - `report.json` contains an `alerts` array. Each entry describes either:
   - `type = "missingness"` when a column’s missing percent exceeds `missing_pct`.
   - `type = "reliability"` when Cronbach’s α or McDonald’s ω drops below the configured minimum (overall or per-scale).
+- `type = "phi"` when the PHI scanner removes columns (emails, phones, MRNs, etc.).
 - Alerts are informational only; the CLI still writes outputs so you can review and decide on follow-up cleaning.
 - When alerts exist, the CLI prints a brief summary and writes `alerts.json` for quick review.
 
@@ -133,6 +137,7 @@ The CLI also prints a short summary so you notice issues immediately.
 - `alerts.json` (only created when thresholds trigger)
 - `data_dictionary.csv` (column name, dtype, missing pct, example)
 - `run_manifest.json` (PRDT version, git SHA, config hash, input hash)
+- `phi_quarantine.csv` (only created when columns are removed for PHI risk)
 - `hist_*.png`, `trend_*.png`, `missingness.png`
 
 ### Reproducibility & Safety

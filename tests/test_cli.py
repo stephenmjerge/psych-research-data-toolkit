@@ -33,12 +33,18 @@ def test_cli_smoke(tmp_path):
     clean_csv = outdir / "interim_clean.csv"
     report_json = outdir / "report.json"
     alerts_json = outdir / "alerts.json"
+    dictionary_csv = outdir / "data_dictionary.csv"
+    manifest_json = outdir / "run_manifest.json"
+    phi_quarantine = outdir / "phi_quarantine.csv"
 
     assert clean_csv.is_file()
     assert report_json.is_file()
     assert any(outdir.glob("hist_*.png"))
-    assert not alerts_json.exists()
+    assert alerts_json.is_file()
     assert (outdir / "missingness.png").is_file()
+    assert dictionary_csv.is_file()
+    assert manifest_json.is_file()
+    assert phi_quarantine.is_file()
 
     report = json.loads(report_json.read_text())
     missing = report["missing"]
@@ -51,11 +57,15 @@ def test_cli_smoke(tmp_path):
     assert alpha is None or isinstance(alpha, float)
     assert omega is None or isinstance(omega, float)
     assert isinstance(alerts, list)
+    assert any(alert.get("type") == "phi" for alert in alerts)
 
     stats_only = tmp_path / "stats_only"
     run_cli(stats_only, "stats")
     assert (stats_only / "report.json").is_file()
     assert not (stats_only / "interim_clean.csv").exists()
+    assert (stats_only / "data_dictionary.csv").is_file()
+    assert (stats_only / "run_manifest.json").is_file()
+    assert (stats_only / "phi_quarantine.csv").is_file()
 
     config_out = tmp_path / "config_stats"
     config_file = tmp_path / "profile.toml"
@@ -100,6 +110,7 @@ required = ["participant_id"]
     config_alerts = config_out / "alerts.json"
     config_manifest = config_out / "run_manifest.json"
     config_dictionary = config_out / "data_dictionary.csv"
+    config_phi = config_out / "phi_quarantine.csv"
     config_report = json.loads((config_out / "report.json").read_text())
     scale_rel = config_report["scale_reliability"]
     alert_block = config_report["alerts"]
@@ -111,4 +122,6 @@ required = ["participant_id"]
     assert config_alerts.is_file()
     assert config_manifest.is_file()
     assert config_dictionary.is_file()
-    assert any(alert["type"] == "missingness" or alert["type"] == "reliability" for alert in alert_block)
+    assert config_phi.is_file()
+    assert any(alert["type"] in {"missingness", "reliability"} for alert in alert_block)
+    assert any(alert.get("type") == "phi" for alert in alert_block)

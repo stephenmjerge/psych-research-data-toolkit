@@ -13,6 +13,7 @@ from .stats import simple_report
 from .plots import save_histograms, save_trend, save_missingness_bar
 from .scales import apply_scale_scores
 from .schema import normalize_schema, validate_schema, build_data_dictionary
+from .phi import scan_phi_columns
 from . import __version__
 
 def _validate_score_columns(df: pd.DataFrame, cols: list[str]) -> None:
@@ -107,7 +108,7 @@ def _file_hash(path: str, chunk_size: int = 65536) -> str:
 
 def _prepare_dataframe(path: str, skip_anon: bool,
                        score_scales: list[str] | None = None,
-                       schema_rules: dict[str, object] | None = None) -> tuple[pd.DataFrame, dict[str, object]]:
+                       schema_rules: dict[str, object] | None = None) -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame | None]:
     df_raw = pd.read_csv(path)
     provenance = {
         "input_path": os.path.abspath(path),
@@ -117,6 +118,10 @@ def _prepare_dataframe(path: str, skip_anon: bool,
     df = basic_clean(df_raw)
     if not skip_anon and "participant_id" in df.columns:
         df = anonymize_column(df, "participant_id", out_col="anon_id")
+
+    df, phi_flags, phi_quarantine = scan_phi_columns(df)
+    if phi_flags:
+        provenance["phi_columns"] = phi_flags
 
     scored = []
     if score_scales:
@@ -129,7 +134,7 @@ def _prepare_dataframe(path: str, skip_anon: bool,
             provenance["schema_messages"] = schema_messages
 
     provenance["post_clean_rows"] = len(df)
-    return df, provenance
+    return df, provenance, phi_quarantine
 
 def _ensure_outdir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
@@ -139,6 +144,30 @@ def _write_data_dictionary(df: pd.DataFrame, outdir: str) -> None:
     dictionary = build_data_dictionary(df)
     dictionary.to_csv(os.path.join(outdir, "data_dictionary.csv"), index=False)
 
+def _write_phi_quarantine(quarantine: pd.DataFrame | None, outdir: str) -> None:
+    path = os.path.join(outdir, "phi_quarantine.csv")
+    if quarantine is None or quarantine.empty:
+        if os.path.exists(path):
+            os.remove(path)
+        return
+    _ensure_outdir(outdir)
+    quarantine.to_csv(path, index=False)
+
+def _format_phi_alerts(records: list[dict] | None) -> list[dict[str, object]]:
+    if not records:
+        return []
+    alerts: list[dict[str, object]] = []
+    for entry in records:
+        column = entry.get("column")
+        matches = entry.get("matches", [])
+        alerts.append({
+            "type": "phi",
+            "column": column,
+            "matches": matches,
+            "message": f"PHI-like data detected in column '{column}'. Column removed from outputs.",
+        })
+    return alerts
+
 def _write_clean_csv(df: pd.DataFrame, outdir: str) -> None:
     _ensure_outdir(outdir)
     df.to_csv(os.path.join(outdir, "interim_clean.csv"), index=False)
@@ -146,7 +175,8 @@ def _write_clean_csv(df: pd.DataFrame, outdir: str) -> None:
 
 def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
                   scales: dict[str, list[str]] | None = None,
-                  alerts: dict[str, object] | None = None) -> list[dict[str, object]]:
+                  alerts: dict[str, object] | None = None,
+                  extra_alerts: list[dict[str, object]] | None = None) -> list[dict[str, object]]:
     _validate_score_columns(df, cols)
     if scales:
         for name, items in scales.items():
@@ -154,10 +184,13 @@ def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
                 raise SystemExit(f"[PRDT] Scale '{name}' must include at least one column")
             _validate_score_columns(df, items)
     report = simple_report(df, cols, scales=scales, alerts=alerts)
+    alert_items = report.get("alerts", []) or []
+    if extra_alerts:
+        alert_items.extend(extra_alerts)
+        report["alerts"] = alert_items
     _ensure_outdir(outdir)
     with open(os.path.join(outdir, "report.json"), "w") as f:
         json.dump(report, f, indent=2)
-    alert_items = report.get("alerts", []) or []
     if alert_items:
         with open(os.path.join(outdir, "alerts.json"), "w") as f:
             json.dump(alert_items, f, indent=2)
@@ -185,12 +218,16 @@ def _write_plots(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]:
     return produced
 
 def _run_clean(args: argparse.Namespace) -> None:
-    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
-                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
+                                                        args.score_scales, args.schema_rules)
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
+    _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: interim_clean.csv")
-    _write_manifest(args.outdir, args, provenance, [], ["interim_clean.csv", "data_dictionary.csv"])
+    outputs = ["interim_clean.csv", "data_dictionary.csv"]
+    if phi_quarantine is not None and not phi_quarantine.empty:
+        outputs.append("phi_quarantine.csv")
+    _write_manifest(args.outdir, args, provenance, [], outputs)
 
 def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
     if not alerts:
@@ -203,6 +240,8 @@ def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
         elif alert.get("type") == "reliability":
             msg = (f"- Reliability: {alert.get('target')} {alert.get('metric')}="
                    f"{alert.get('value')} < {alert.get('threshold')}")
+        elif alert.get("type") == "phi":
+            msg = f"- PHI detected in {alert.get('column')}; column removed."
         else:
             msg = f"- {alert}"
         print(msg)
@@ -210,41 +249,55 @@ def _print_alert_summary(alerts: list[dict[str, object]]) -> None:
         print("  ...")
 
 def _run_stats(args: argparse.Namespace) -> None:
-    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
-                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
+                                                        args.score_scales, args.schema_rules)
     _ensure_score_cols(args, provenance)
     _write_data_dictionary(df, args.outdir)
+    phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
     alerts = _write_report(df, args.score_cols, args.outdir,
-                           getattr(args, "scales", None), getattr(args, "alerts", None))
+                           getattr(args, "scales", None), getattr(args, "alerts", None),
+                           extra_alerts=phi_alerts)
+    _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: report.json")
     _print_alert_summary(alerts)
     outputs = ["report.json", "data_dictionary.csv"]
     if alerts:
         outputs.append("alerts.json")
+    if phi_quarantine is not None and not phi_quarantine.empty:
+        outputs.append("phi_quarantine.csv")
     _write_manifest(args.outdir, args, provenance, alerts, outputs)
 
 def _run_plot(args: argparse.Namespace) -> None:
-    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
-                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
+                                                        args.score_scales, args.schema_rules)
     _ensure_score_cols(args, provenance)
     plot_files = _write_plots(df, args.score_cols, args.outdir)
+    _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: histogram(s) and trend plot (if feasible)")
-    _write_manifest(args.outdir, args, provenance, [], plot_files)
+    outputs = list(plot_files)
+    if phi_quarantine is not None and not phi_quarantine.empty:
+        outputs.append("phi_quarantine.csv")
+    _write_manifest(args.outdir, args, provenance, [], outputs)
 
 def _run_full(args: argparse.Namespace) -> None:
-    df, provenance = _prepare_dataframe(args.input, args.skip_anon,
-                                        args.score_scales, args.schema_rules)
+    df, provenance, phi_quarantine = _prepare_dataframe(args.input, args.skip_anon,
+                                                        args.score_scales, args.schema_rules)
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
+    phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
     alerts = _write_report(df, args.score_cols, args.outdir,
-                           getattr(args, "scales", None), getattr(args, "alerts", None))
+                           getattr(args, "scales", None), getattr(args, "alerts", None),
+                           extra_alerts=phi_alerts)
     plot_files = _write_plots(df, args.score_cols, args.outdir)
+    _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
     _print_alert_summary(alerts)
     outputs = ["interim_clean.csv", "data_dictionary.csv", "report.json"]
     if alerts:
         outputs.append("alerts.json")
     outputs.extend(plot_files)
+    if phi_quarantine is not None and not phi_quarantine.empty:
+        outputs.append("phi_quarantine.csv")
     _write_manifest(args.outdir, args, provenance, alerts, outputs)
 
 def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
@@ -428,6 +481,7 @@ def _write_manifest(outdir: str, args: argparse.Namespace, provenance: dict[str,
         },
         "schema_messages": provenance.get("schema_messages"),
         "scales_scored": provenance.get("scales_scored"),
+        "phi_flags": provenance.get("phi_columns"),
         "alerts_count": len(alerts),
         "outputs": sorted(set(outputs)),
         "python_version": sys.version,

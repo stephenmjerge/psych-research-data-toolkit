@@ -16,6 +16,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Built-in PHQ-9/GAD-7 scale scoring engine
 - Optional schema validation + auto-generated `data_dictionary.csv`
 - Per-run manifest with config/input hashes (`run_manifest.json`)
+- PHI scanning/redaction with `phi_quarantine.csv` + alert entries
 - Missingness bar chart plot (`missingness.png`)
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)
