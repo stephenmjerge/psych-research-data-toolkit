@@ -247,14 +247,15 @@ def _write_clean_csv(df: pd.DataFrame, outdir: str) -> None:
 def _write_report(df: pd.DataFrame, cols: list[str], outdir: str,
                   scales: dict[str, list[str]] | None = None,
                   alerts: dict[str, object] | None = None,
-                  extra_alerts: list[dict[str, object]] | None = None) -> list[dict[str, object]]:
+                  extra_alerts: list[dict[str, object]] | None = None,
+                  scale_metadata: list[dict[str, object]] | None = None) -> list[dict[str, object]]:
     _validate_score_columns(df, cols)
     if scales:
         for name, items in scales.items():
             if not items:
                 raise SystemExit(f"[PRDT] Scale '{name}' must include at least one column")
             _validate_score_columns(df, items)
-    report = simple_report(df, cols, scales=scales, alerts=alerts)
+    report = simple_report(df, cols, scales=scales, alerts=alerts, scale_metadata=scale_metadata)
     alert_items = report.get("alerts", []) or []
     if extra_alerts:
         alert_items.extend(extra_alerts)
@@ -337,9 +338,16 @@ def _run_stats(args: argparse.Namespace) -> None:
     _ensure_score_cols(args, provenance)
     _write_data_dictionary(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
-    alerts = _write_report(df, args.score_cols, args.outdir,
-                           getattr(args, "scales", None), getattr(args, "alerts", None),
-                           extra_alerts=phi_alerts)
+    scale_metadata = provenance.get("scales_scored")
+    alerts = _write_report(
+        df,
+        args.score_cols,
+        args.outdir,
+        getattr(args, "scales", None),
+        getattr(args, "alerts", None),
+        extra_alerts=phi_alerts,
+        scale_metadata=scale_metadata,
+    )
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: report.json")
     _print_alert_summary(alerts)
@@ -379,9 +387,16 @@ def _run_full(args: argparse.Namespace) -> None:
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
-    alerts = _write_report(df, args.score_cols, args.outdir,
-                           getattr(args, "scales", None), getattr(args, "alerts", None),
-                           extra_alerts=phi_alerts)
+    scale_metadata = provenance.get("scales_scored")
+    alerts = _write_report(
+        df,
+        args.score_cols,
+        args.outdir,
+        getattr(args, "scales", None),
+        getattr(args, "alerts", None),
+        extra_alerts=phi_alerts,
+        scale_metadata=scale_metadata,
+    )
     plot_files = _write_plots(df, args.score_cols, args.outdir)
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")

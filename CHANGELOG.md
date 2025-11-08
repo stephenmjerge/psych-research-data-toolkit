@@ -15,6 +15,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - `alerts.json` artifact + CLI summaries when thresholds trigger
 - Built-in PHQ-9/GAD-7 scale scoring engine
 - Built-in scoring library now includes PHQ-9, GAD-7, PCL-5, AUDIT + custom definitions
+- Reliability analytics now output item-total correlations, alpha-if-item-dropped, and scale severity summaries
 - Optional schema validation + auto-generated `data_dictionary.csv`
 - Schema value-range validation with alert surfacing
 - Per-run manifest with config/input hashes (`run_manifest.json`)

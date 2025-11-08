@@ -8,7 +8,7 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 - Descriptives, Pearson correlations, Cronbach’s alpha & McDonald’s ω (overall + per-scale), missingness counts + percents (JSON)  
 - Optional alert thresholds for reliability and column-level missingness  
 - Automatic PHI detector (emails/phones/SSNs/etc.) with quarantine + alerts  
-- Built-in scoring for PHQ-9, GAD-7, PCL-5, AUDIT + custom scale definitions
+- Built-in scoring for PHQ-9, GAD-7, PCL-5, AUDIT + custom scale definitions (alpha, omega, item-total stats)
 - Data dictionary + run manifest per execution for reproducibility  
 - Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
@@ -126,6 +126,7 @@ If you prefer to install dependencies without editable mode, `pip install -r req
    - `run_manifest.json`: provenance (version, git SHA, config hash, input hash, timestamps).
    - `phi_quarantine.csv`: columns removed for PHI risk (e.g., emails in `contact`).
    - `hist_phq9_total.png`, `hist_gad7_total.png`, `trend_phq9_total.png`, `missingness.png`.
+   - `scale_scores` section inside `report.json` summarizing mean/std and severity labels based on cutoffs.
 
 Sample `alerts.json` (generated because every `note` entry is missing, GAD-7 reliability is low, and contact info contains emails in the example data):
 

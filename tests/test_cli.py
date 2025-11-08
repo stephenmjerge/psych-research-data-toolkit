@@ -126,6 +126,7 @@ ignore_columns = ["note"]
     config_phi = config_out / "phi_quarantine.csv"
     config_report = json.loads((config_out / "report.json").read_text())
     scale_rel = config_report["scale_reliability"]
+    scale_scores = config_report["scale_scores"]
     alert_block = config_report["alerts"]
     descriptives = config_report["descriptives"]
     assert set(scale_rel.keys()) == {"phq9", "gad7"}
@@ -139,4 +140,5 @@ ignore_columns = ["note"]
     assert config_phi.is_file()
     assert any(alert["type"] in {"missingness", "reliability"} for alert in alert_block)
     assert any(alert.get("type") == "phi" for alert in alert_block)
+    assert any(score_entry.get("name") == "phq2_custom" for score_entry in scale_scores)
     assert any(entry.get("variable") == "phq2_score" for entry in descriptives)

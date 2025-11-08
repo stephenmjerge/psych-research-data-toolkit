@@ -62,16 +62,46 @@ def mcdonald_omega(df: pd.DataFrame, cols: list[str]) -> float | None:
         return None
     return float(numerator / denominator)
 
+def item_total_correlations(df: pd.DataFrame, cols: list[str]) -> dict[str, float] | None:
+    if len(cols) < 2:
+        return None
+    items = df[cols].apply(pd.to_numeric, errors="coerce").dropna()
+    if items.empty or len(items) < 2:
+        return None
+    total = items.sum(axis=1)
+    correlations: dict[str, float] = {}
+    for col in cols:
+        series = items[col]
+        rest = total - series
+        if series.var(ddof=1) == 0 or rest.var(ddof=1) == 0:
+            correlations[col] = float("nan")
+            continue
+        correlations[col] = float(series.corr(rest))
+    return correlations
+
+def alpha_if_item_dropped(df: pd.DataFrame, cols: list[str]) -> dict[str, float] | None:
+    if len(cols) < 3:
+        return None
+    stats: dict[str, float] = {}
+    for col in cols:
+        remaining = [c for c in cols if c != col]
+        stats[col] = cronbach_alpha(df, remaining) or float("nan")
+    return stats
+
 def scale_reliability_summary(df: pd.DataFrame, scales: dict[str, list[str]]) -> dict[str, dict[str, object]]:
     summary: dict[str, dict[str, object]] = {}
     for name, items in scales.items():
         items_list = [str(col) for col in items if str(col).strip()]
         alpha = cronbach_alpha(df, items_list) if len(items_list) >= 2 else None
         omega = mcdonald_omega(df, items_list) if len(items_list) >= 2 else None
+        item_corr = item_total_correlations(df, items_list)
+        alpha_drop = alpha_if_item_dropped(df, items_list)
         summary[name] = {
             "items": items_list,
             "cronbach_alpha": alpha,
             "mcdonald_omega": omega,
+            "item_total_correlations": item_corr,
+            "alpha_if_item_dropped": alpha_drop,
         }
     return summary
 
@@ -145,9 +175,45 @@ def _reliability_alerts(overall: dict[str, float | None],
 
     return alerts
 
-def simple_report(df: pd.DataFrame, cols: list[str],
-                  scales: dict[str, list[str]] | None = None,
-                  alerts: dict[str, object] | None = None) -> dict:
+def _interpret_cutoffs(score: float | None, cutoffs: dict[str, str] | None) -> str | None:
+    if score is None or cutoffs is None:
+        return None
+    parsed: list[tuple[str, float | None, float | None]] = []
+    for label, value in cutoffs.items():
+        text = str(value)
+        if "+" in text:
+            low = text.replace("+", "").strip()
+            try:
+                parsed.append((label, float(low), None))
+            except ValueError:
+                continue
+        elif "-" in text:
+            parts = text.split("-", 1)
+            try:
+                parsed.append((label, float(parts[0]), float(parts[1])))
+            except ValueError:
+                continue
+        else:
+            try:
+                val = float(text)
+                parsed.append((label, val, val))
+            except ValueError:
+                continue
+    for label, low, high in parsed:
+        if low is not None and score < low:
+            continue
+        if high is not None and score > high:
+            continue
+        return label
+    return None
+
+def simple_report(
+    df: pd.DataFrame,
+    cols: list[str],
+    scales: dict[str, list[str]] | None = None,
+    alerts: dict[str, object] | None = None,
+    scale_metadata: list[dict[str, object]] | None = None,
+) -> dict:
     desc = describe_columns(df, cols).reset_index().rename(columns={"index":"variable"})
     corr = pearson_corr(df, cols)
     alpha = cronbach_alpha(df, cols)
@@ -160,9 +226,36 @@ def simple_report(df: pd.DataFrame, cols: list[str],
         "missing": missing_summary(df),
     }
     scale_block = None
+    scale_scores: list[dict[str, object]] = []
+    metadata_map = {meta.get("name"): meta for meta in (scale_metadata or []) if isinstance(meta, dict)}
     if scales:
         scale_block = scale_reliability_summary(df, scales)
+        for name, meta in metadata_map.items():
+            if name in scale_block:
+                scale_block[name]["cutoffs"] = meta.get("cutoffs")
         report["scale_reliability"] = scale_block
+
+        for name, meta in metadata_map.items():
+            out_col = meta.get("output_column")
+            if not out_col or out_col not in df.columns:
+                continue
+            series = pd.to_numeric(df[out_col], errors="coerce")
+            if series.dropna().empty:
+                continue
+            mean_val = float(series.mean())
+            std_val = float(series.std()) if len(series) > 1 else 0.0
+            interpretation = _interpret_cutoffs(mean_val, meta.get("cutoffs"))
+            scale_scores.append({
+                "name": name,
+                "score_column": out_col,
+                "mean": mean_val,
+                "std": std_val,
+                "min": float(series.min()),
+                "max": float(series.max()),
+                "interpretation": interpretation,
+            })
+        if scale_scores:
+            report["scale_scores"] = scale_scores
 
     alert_items: list[dict[str, object]] = []
     if alerts:
