@@ -1,6 +1,8 @@
 from __future__ import annotations
 import json, os, subprocess, sys
 from pathlib import Path
+import pandas as pd
+from prdt.stats import cronbach_alpha
 
 
 def test_cli_smoke(tmp_path):
@@ -11,6 +13,31 @@ def test_cli_smoke(tmp_path):
 
     env = os.environ.copy()
     env["PRDT_ANON_KEY"] = "this-is-a-secure-key-used-for-tests-1234567890abcdef"
+    cache_root = tmp_path / "prdt-test-cache"
+    mpl_cache = cache_root / "mplconfig"
+    xdg_cache = cache_root / "xdg"
+    font_cache = cache_root / "fontconfig"
+    home_dir = cache_root / "home"
+    fonts_conf = cache_root / "fonts.conf"
+    for path in (mpl_cache, xdg_cache, font_cache, home_dir):
+        path.mkdir(parents=True, exist_ok=True)
+    fonts_conf.write_text(
+        f"""<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>/System/Library/Fonts</dir>
+  <cachedir>{font_cache}</cachedir>
+</fontconfig>
+""",
+        encoding="utf-8",
+    )
+    env.setdefault("MPLCONFIGDIR", str(mpl_cache))
+    env.setdefault("XDG_CACHE_HOME", str(xdg_cache))
+    env.setdefault("FC_CACHEDIR", str(font_cache))
+    env.setdefault("FONTCONFIG_FILE", str(fonts_conf))
+    env.setdefault("HOME", str(home_dir))
+    env.setdefault("PRDT_DISABLE_PLOTS", "1")
+    plots_disabled = env.get("PRDT_DISABLE_PLOTS", "").lower() in {"1", "true", "yes"}
 
     def run_cli(out_path: Path, *extra_args: str) -> None:
         cmd = [
@@ -40,9 +67,12 @@ def test_cli_smoke(tmp_path):
 
     assert clean_csv.is_file()
     assert report_json.is_file()
-    assert any(outdir.glob("hist_*.png"))
-    assert alerts_json.is_file()
-    assert (outdir / "missingness.png").is_file()
+    if plots_disabled:
+        assert not any(outdir.glob("hist_*.png"))
+        assert not (outdir / "missingness.png").exists()
+    else:
+        assert any(outdir.glob("hist_*.png"))
+        assert (outdir / "missingness.png").is_file()
     assert dictionary_csv.is_file()
     assert manifest_json.is_file()
     assert phi_quarantine.is_file()
@@ -141,9 +171,50 @@ ignore_columns = ["note"]
     assert config_manifest.is_file()
     assert config_dictionary.is_file()
     assert config_phi.is_file()
-    assert config_summary.is_file()
-    assert any(config_out.glob("scale_items_*.png"))
+    if plots_disabled:
+        assert not config_summary.exists()
+        assert not any(config_out.glob("scale_items_*.png"))
+    else:
+        assert config_summary.is_file()
+        assert any(config_out.glob("scale_items_*.png"))
     assert any(alert["type"] in {"missingness", "reliability"} for alert in alert_block)
     assert any(alert.get("type") == "phi" for alert in alert_block)
     assert any(score_entry.get("name") == "phq2_custom" for score_entry in scale_scores)
     assert any(entry.get("variable") == "phq2_score" for entry in descriptives)
+
+
+def test_stats_alpha_flag(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    input_csv = repo_root / "data" / "examples" / "surveys.csv"
+    env = os.environ.copy()
+    env["PRDT_ANON_KEY"] = "this-is-a-secure-key-used-for-tests-1234567890abcdef"
+    env.setdefault("PRDT_DISABLE_PLOTS", "1")
+    outdir = tmp_path / "alpha"
+    cmd = [
+        sys.executable,
+        "-m",
+        "prdt.cli",
+        "stats",
+        "--alpha",
+        "--input",
+        str(input_csv),
+        "--outdir",
+        str(outdir),
+        "--score-cols",
+        "phq9_item1",
+        "phq9_item2",
+    ]
+    result = subprocess.run(
+        cmd,
+        check=True,
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    df = pd.read_csv(input_csv)
+    expected = cronbach_alpha(df, ["phq9_item1", "phq9_item2"])
+    assert expected is not None
+    assert f"{expected:.3f}" in result.stdout
+    assert "Cronbach" in result.stdout
+    assert (outdir / "report.json").is_file()

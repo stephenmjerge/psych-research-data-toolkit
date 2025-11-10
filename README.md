@@ -53,7 +53,7 @@ If you prefer to install dependencies without editable mode, `pip install -r req
 
 ## Commands
 - `prdt clean`: Clean/anonymize CSV and write `interim_clean.csv`.
-- `prdt stats`: Clean, validate score columns, and write `report.json`.
+- `prdt stats`: Clean, validate score columns, and write `report.json`. Add `--alpha` to print Cronbach’s α for the selected `--score-cols` without running extra reports.
 - `prdt plot`: Clean, validate score columns, and generate `hist_*.png` plus `trend_*.png`.
 - `prdt run`: Full pipeline (equivalent to running `clean`, `stats`, `plot`). Invoked automatically if no subcommand is supplied.
 

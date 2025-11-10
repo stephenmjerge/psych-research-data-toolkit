@@ -3,13 +3,22 @@ import os
 from typing import Any
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
-plt.style.use("seaborn-v0_8")
+def _plots_disabled() -> bool:
+    flag = os.environ.get("PRDT_DISABLE_PLOTS", "")
+    return flag.lower() in {"1", "true", "yes", "on"}
+
+if not _plots_disabled():
+    import matplotlib.pyplot as plt
+    plt.style.use("seaborn-v0_8")
+else:
+    plt = None  # type: ignore[assignment]
 
 PALETTE = ["#4477AA", "#66CCEE", "#228833", "#CCBB44", "#EE6677", "#AA3377", "#BBBBBB"]
 
 def save_histograms(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]:
+    if _plots_disabled() or plt is None:
+        return []
     os.makedirs(outdir, exist_ok=True)
     files: list[str] = []
     for c in cols:
@@ -29,6 +38,8 @@ def save_histograms(df: pd.DataFrame, cols: list[str], outdir: str) -> list[str]
     return files
 
 def save_trend(df: pd.DataFrame, id_col: str, time_col: str, value_col: str, outdir: str) -> str | None:
+    if _plots_disabled() or plt is None:
+        return None
     """Plot a simple time trend for each participant on one chart."""
     needed = [id_col, time_col, value_col]
     if not all(col in df.columns for col in needed):
@@ -59,6 +70,8 @@ def save_trend(df: pd.DataFrame, id_col: str, time_col: str, value_col: str, out
     return filename
 
 def save_missingness_bar(df: pd.DataFrame, outdir: str) -> str | None:
+    if _plots_disabled() or plt is None:
+        return None
     """Render a bar chart of percent missing per column."""
     miss = df.isna().mean().sort_values(ascending=False) * 100
     miss = miss[miss > 0]
@@ -104,6 +117,8 @@ def _build_scale_scores_from_df(df: pd.DataFrame, metadata: list[dict[str, Any]]
     return results
 
 def save_scale_summary(scale_scores: list[dict[str, Any]] | None, outdir: str) -> str | None:
+    if _plots_disabled() or plt is None:
+        return None
     if not scale_scores:
         return None
     valid = [entry for entry in scale_scores if isinstance(entry, dict) and entry.get("mean") is not None]
@@ -131,6 +146,8 @@ def save_scale_summary(scale_scores: list[dict[str, Any]] | None, outdir: str) -
     return filename
 
 def save_scale_item_bars(df: pd.DataFrame, metadata: list[dict[str, Any]] | None, outdir: str, limit: int = 4) -> list[str]:
+    if _plots_disabled() or plt is None:
+        return []
     if not metadata:
         return []
     os.makedirs(outdir, exist_ok=True)

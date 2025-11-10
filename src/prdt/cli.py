@@ -9,7 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib  # type: ignore
 from .cleaning import basic_clean
 from .anonymize import anonymize_column
-from .stats import simple_report
+from .stats import simple_report, cronbach_alpha
 from .plots import (
     save_histograms,
     save_trend,
@@ -446,6 +446,7 @@ def _run_stats(args: argparse.Namespace) -> None:
         extra_alerts=phi_alerts,
         scale_metadata=scale_metadata,
     )
+    _maybe_print_alpha(args, df)
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: report.json")
     outputs = ["report.json", "data_dictionary.csv"]
@@ -460,6 +461,20 @@ def _run_stats(args: argparse.Namespace) -> None:
         _persist_alerts(args.outdir, alerts)
     _print_alert_summary(alerts)
     _print_alert_summary(alerts)
+
+def _maybe_print_alpha(args: argparse.Namespace, df: pd.DataFrame) -> None:
+    if not getattr(args, "alpha", False):
+        return
+    cols = args.score_cols or []
+    if len(cols) < 2:
+        print("[PRDT] Cronbach alpha requires at least two --score-cols.")
+        return
+    value = cronbach_alpha(df, cols)
+    if value is None:
+        print("[PRDT] Cronbach alpha could not be computed (insufficient data).")
+        return
+    label = ", ".join(cols)
+    print(f"[PRDT] Cronbach alpha ({label}): {value:.3f}")
 
 def _run_plot(args: argparse.Namespace) -> None:
     df, provenance, phi_quarantine = _prepare_dataframe(
@@ -674,7 +689,12 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.required = True
 
     sub.add_parser("clean", parents=[common], help="Clean + anonymize CSV and write interim_clean.csv")
-    sub.add_parser("stats", parents=[common], help="Generate report.json (descriptives, corr., alpha, missing)")
+    stats_parser = sub.add_parser("stats", parents=[common], help="Generate report.json (descriptives, corr., alpha, missing)")
+    stats_parser.add_argument(
+        "--alpha",
+        action="store_true",
+        help="Print Cronbach's α for --score-cols after computing stats.",
+    )
     sub.add_parser("plot", parents=[common], help="Create histogram/time-trend plots")
     sub.add_parser("run", parents=[common], help="Run the full pipeline (clean + stats + plot)")
     return parser
