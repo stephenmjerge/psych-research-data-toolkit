@@ -1,6 +1,14 @@
 # Psych Research Data Toolkit
 
-A clean, reproducible toolkit for psychological and psychiatric research: CSV cleaning, anonymization, descriptives, correlations, and clinical data visualizations (histograms, time-trend).
+> **Research-use only:** PRDT is a lab notebook for data-cleaning and QA. Do not deploy it for diagnosis or treatment decisions unless your workflow is IRB-approved, validated, and overseen by licensed clinicians with HIPAA-compliant safeguards.
+
+## Overview
+
+Psych Research Data Toolkit (PRDT) is a reproducible CLI for cleaning, anonymizing, and summarizing mental-health CSVs. It handles HMAC-based identifiers, PHI scrubbing, descriptive stats, reliability checks, and visualization so trainees can ship trustworthy analyses without reinventing pipelines.
+
+### Visual snapshot
+
+Record a 60-second screen capture of `prdt run` plus sample plots and place it in `docs/` (e.g., `docs/prdt-demo.gif`). Use it in admissions decks or lab walk-throughs.
 
 ## Features
 - Normalize headers and basic CSV cleaning  
@@ -13,49 +21,51 @@ A clean, reproducible toolkit for psychological and psychiatric research: CSV cl
 - Drift detection compares scale means vs last run (`drift.json` + alerts)  
 - Histograms for selected score columns + missingness bar chart  
 - Simple time-trend plot by participant  
-- CLI subcommands for focused workflows (`clean`, `stats`, `plot`, `run`)  
+- CLI subcommands for focused workflows (`clean`, `stats`, `plot`, `run`)
 
-## Quickstart
+## Setup
 
-1. **Create and activate a virtual environment** (keeps dependencies isolated):
+1. **Create and activate the virtual environment**:
 
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
 
-2. **Install PRDT and its dependencies**:
+2. **Install PRDT and dev dependencies**:
 
    ```bash
-   pip install -e .
-   # or use the pinned environment
+   pip install -e ".[dev]"
+   # optional pinned environment
    pip install -r requirements-lock.txt
    ```
 
-3. **Set the anonymization key**. This secret is required whenever `participant_id` is present; the CLI will exit if it is missing. Generate a random value (example uses `openssl`) and export it before every session:
+3. **Configure environment variables** (export before running PRDT):
 
-   ```bash
-   export PRDT_ANON_KEY="$(openssl rand -hex 32)"
-   ```
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `PRDT_ANON_KEY` | Required when `participant_id` exists; used for HMAC anonymization | `export PRDT_ANON_KEY="$(openssl rand -hex 32)"` |
+| `MPLCONFIGDIR` / `XDG_CACHE_HOME` *(optional)* | Point Matplotlib caches at writable dirs on locked-down machines | `export MPLCONFIGDIR=$PWD/.cache/mpl` |
 
-   On Windows PowerShell use: `setx PRDT_ANON_KEY (New-Guid)` and restart the shell.
+On Windows PowerShell use `setx PRDT_ANON_KEY (New-Guid)` and restart the shell.
 
-4. **Run the CLI** on the sample data to verify everything works (subcommand defaults to `run`, which executes the full pipeline):
+4. **Run the sample workflow** to verify everything works:
 
    ```bash
    prdt run --input data/examples/surveys.csv --outdir outputs/run1 \
      --score-cols phq9_total gad7_total
    ```
 
-   Use `python -m prdt.cli run ...` if the console script is unavailable in your shell.
+   Use `python -m prdt.cli run ...` if the console script is unavailable. Add `--skip-anon` if you need to retain `participant_id` for local debugging only.
 
-If you prefer to install dependencies without editable mode, `pip install -r requirements.txt` also works, but the console script entry point (`prdt`) is only available after `pip install -e .` or `pip install .`. Add `--skip-anon` if you explicitly want to retain `participant_id` during local debugging.
+## CLI cheatsheet
 
-## Commands
-- `prdt clean`: Clean/anonymize CSV and write `interim_clean.csv`.
-- `prdt stats`: Clean, validate score columns, and write `report.json`. Add `--alpha` to print Cronbach’s α for the selected `--score-cols` without running extra reports.
-- `prdt plot`: Clean, validate score columns, and generate `hist_*.png` plus `trend_*.png`.
-- `prdt run`: Full pipeline (equivalent to running `clean`, `stats`, `plot`). Invoked automatically if no subcommand is supplied.
+| Command | Purpose | Example |
+| --- | --- | --- |
+| `prdt clean` | Clean + anonymize CSV, emit `interim_clean.csv` and data dictionary | `prdt clean --input data/examples/surveys.csv --outdir outputs/clean` |
+| `prdt stats [--alpha]` | Validate score columns, compute descriptives/reliability/missingness; `--alpha` prints Cronbach’s α for `--score-cols` | `prdt stats --input data/examples/surveys.csv --outdir outputs/stats --score-cols phq9_total gad7_total --alpha` |
+| `prdt plot` | Generate histogram, trend, and missingness plots for selected columns | `prdt plot --input data/examples/surveys.csv --outdir outputs/plots --score-cols phq9_total` |
+| `prdt run` | Full pipeline (`clean` + `stats` + `plot`), default command when omitted | `prdt run --input data/examples/surveys.csv --outdir outputs/run1` |
 
 ## Profiles (`--config`)
 - Create a TOML profile to avoid repeating CLI flags. Paths in the file are resolved relative to the config’s directory.
