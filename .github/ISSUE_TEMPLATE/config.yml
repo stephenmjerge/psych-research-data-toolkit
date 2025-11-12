@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/stephenmjerge/psych-research-data-toolkit/tree/main/docs
+    about: Review existing guides before filing a new request.
+  - name: 🆘 Security disclosures
+    url: mailto:stephenmjergedev@gmail.com
+    about: Use email for sensitive data or vulnerability reports.
