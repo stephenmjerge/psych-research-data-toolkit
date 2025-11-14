@@ -44,6 +44,7 @@ def test_cli_smoke(tmp_path):
             sys.executable,
             "-m",
             "prdt.cli",
+            "--allow-phi-export",
             *extra_args,
             "--input",
             str(input_csv),
@@ -107,6 +108,7 @@ command = "run"
 input = "{input_csv}"
 outdir = "{config_out}"
 score_cols = ["phq9_total", "gad7_total"]
+allow_phi_export = true
 [prdt.score]
 scales = ["phq9", "gad7", "phq2_custom"]
 
@@ -196,6 +198,7 @@ def test_stats_alpha_flag(tmp_path):
         "prdt.cli",
         "stats",
         "--alpha",
+        "--allow-phi-export",
         "--input",
         str(input_csv),
         "--outdir",

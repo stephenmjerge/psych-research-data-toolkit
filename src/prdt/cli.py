@@ -214,6 +214,21 @@ def _prepare_dataframe(path: str, skip_anon: bool,
     provenance["post_clean_rows"] = len(df)
     return df, provenance, phi_quarantine
 
+def _guard_against_phi(quarantine: pd.DataFrame | None,
+                       phi_flags: list[dict] | None,
+                       allow_export: bool) -> None:
+    """Abort runs when PHI-like columns are present unless explicitly allowed."""
+    if allow_export or quarantine is None or quarantine.empty:
+        return
+    columns = sorted({str(flag.get("column")) for flag in (phi_flags or []) if flag.get("column")})
+    detail = ", ".join(columns) if columns else "PHI columns"
+    raise SystemExit(
+        "[PRDT] PHI-like columns detected "
+        f"({detail}). Run aborted to prevent accidental export. "
+        "Review the dataset, expand `[prdt.phi.allow_columns]`, "
+        "or rerun with `--allow-phi-export` if you intentionally need the raw values."
+    )
+
 def _ensure_outdir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
@@ -316,6 +331,7 @@ def _run_clean(args: argparse.Namespace) -> None:
         getattr(args, "custom_scale_definitions", None),
         getattr(args, "phi_options", None),
     )
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
     _write_phi_quarantine(phi_quarantine, args.outdir)
@@ -433,6 +449,7 @@ def _run_stats(args: argparse.Namespace) -> None:
         getattr(args, "custom_scale_definitions", None),
         getattr(args, "phi_options", None),
     )
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
     _ensure_score_cols(args, provenance)
     _write_data_dictionary(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
@@ -485,6 +502,7 @@ def _run_plot(args: argparse.Namespace) -> None:
         getattr(args, "custom_scale_definitions", None),
         getattr(args, "phi_options", None),
     )
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
     _ensure_score_cols(args, provenance)
     plot_files = _write_plots(
         df,
@@ -509,7 +527,9 @@ def _run_full(args: argparse.Namespace) -> None:
         args.score_scales,
         args.schema_rules,
         getattr(args, "custom_scale_definitions", None),
+        getattr(args, "phi_options", None),
     )
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
     _ensure_score_cols(args, provenance)
     _write_clean_csv(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
@@ -586,6 +606,13 @@ def _load_config(path: str | None) -> tuple[dict[str, object], dict[str, str]]:
             data[key] = str((base / value).resolve())
     if "score_cols" in data and isinstance(data["score_cols"], str):
         data["score_cols"] = [data["score_cols"]]
+    allow_phi_export = data.get("allow_phi_export")
+    if isinstance(allow_phi_export, str):
+        allow_phi_export = allow_phi_export.lower() in {"1", "true", "yes"}
+    if isinstance(allow_phi_export, bool):
+        data["allow_phi_export"] = allow_phi_export
+    else:
+        data.pop("allow_phi_export", None)
 
     normalized_scales = _normalize_scales(data.get("scales"))
     if normalized_scales:
@@ -629,7 +656,7 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_com
         return args
     if allow_command_override and isinstance(config.get("command"), str):
         args.command = config["command"]  # type: ignore[assignment]
-    for key in ("input", "outdir", "score_cols", "skip_anon"):
+    for key in ("input", "outdir", "score_cols", "skip_anon", "allow_phi_export"):
         if getattr(args, key, None) is None and config.get(key) is not None:
             setattr(args, key, config[key])
     if config.get("scales") is not None:
@@ -659,6 +686,8 @@ def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) ->
         args.schema_rules = None
     if not hasattr(args, "phi_options"):
         args.phi_options = None
+    if not hasattr(args, "allow_phi_export") or args.allow_phi_export is None:
+        args.allow_phi_export = False
     if args.score_cols is None:
         args.score_cols = ["phq9_total", "gad7_total"]
     missing = [field for field in ("input", "outdir") if getattr(args, field) is None]
@@ -682,6 +711,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=None,
         help="Skip anonymizing participant_id (default anonymizes when present)",
+    )
+    common.add_argument(
+        "--allow-phi-export",
+        action="store_true",
+        default=None,
+        help="Proceed even when PHI-like columns are detected (default aborts).",
     )
 
     parser = argparse.ArgumentParser(description="PRDT CLI")

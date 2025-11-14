@@ -186,6 +186,14 @@ workflow is discoverable.
 - Alerts are informational only; the CLI still writes outputs so you can review and decide on follow-up cleaning.
 - When alerts exist, the CLI prints a brief summary and writes `alerts.json` for quick review.
 
+### PHI guardrail
+PRDT now aborts when PHI-like columns are detected to prevent accidental exports.
+
+- Inspect the columns listed in the error and clean or drop them.
+- If the columns are expected (e.g., you plan to scrub them downstream), either list them under `[prdt.phi.allow_columns]`
+  or set `--allow-phi-export` / `allow_phi_export = true` in your config.
+- `phi_quarantine.csv` still records the flagged data for auditing, even when the guardrail fires.
+
 ### Outputs
 - `interim_clean.csv`
 - `report.json` (descriptives, correlations, reliability, missing, alerts)
