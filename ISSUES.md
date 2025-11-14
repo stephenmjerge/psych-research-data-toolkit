@@ -1,0 +1,9 @@
+# Issues
+
+We track day-to-day bug triage in the private Notion board referenced from `LAUNCHPAD/next-actions.md`. When adding an entry, always include:
+
+1. Dataset or config that reproduces the problem.
+2. CLI command (usually `prdt --config <file> analyze`).
+3. Expected vs. actual behavior plus any anonymization concerns.
+
+If the issue is urgent, flag it inside Notion and drop a note in `PortfolioHub.md` so it bubbles up during the weekly review.
