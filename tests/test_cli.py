@@ -39,13 +39,14 @@ def test_cli_smoke(tmp_path):
     env.setdefault("PRDT_DISABLE_PLOTS", "1")
     plots_disabled = env.get("PRDT_DISABLE_PLOTS", "").lower() in {"1", "true", "yes"}
 
-    def run_cli(out_path: Path, *extra_args: str) -> None:
+    def run_cli(out_path: Path, command: str | None = None) -> None:
+        command = command or "run"
         cmd = [
             sys.executable,
             "-m",
             "prdt.cli",
+            command,
             "--allow-phi-export",
-            *extra_args,
             "--input",
             str(input_csv),
             "--outdir",
