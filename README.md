@@ -171,6 +171,10 @@ prdt --config configs/dataset_a.toml
   can attach them to OSF once PHI checks pass.
 - Score columns cover PHQ-9, GAD-7, and PCL-5 totals; adjust the config if the
   instrument list changes.
+- `scripts/run_dataset_a.sh` wraps the CLI so you can override `DATASET_A_INPUT`
+  / `DATASET_A_OUTDIR` without editing the profile.
+- See `docs/dataset_a.md` for the full checklist plus demo artifacts under
+  `docs/assets/dataset-a-demo/`.
 
 Copy this section into `PortfolioHub.md` once Dataset A publishes to OSF so the
 workflow is discoverable.
