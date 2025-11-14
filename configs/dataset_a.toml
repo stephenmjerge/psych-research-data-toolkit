@@ -1,0 +1,68 @@
+# Dataset A cleaning profile
+# Paths are relative to this config file.
+
+[prdt]
+command = "run"
+input = "../data/dataset_a/raw.csv"
+outdir = "../outputs/dataset-a"
+score_cols = ["phq9_total", "gad7_total", "pcl5_total"]
+skip_anon = false
+
+[prdt.score]
+scales = ["phq9", "gad7", "pcl5"]
+
+[prdt.scales.phq9]
+items = ["phq9_item1", "phq9_item2", "phq9_item3", "phq9_item4", "phq9_item5", "phq9_item6", "phq9_item7", "phq9_item8", "phq9_item9"]
+
+[prdt.scales.gad7]
+items = ["gad7_item1", "gad7_item2", "gad7_item3", "gad7_item4", "gad7_item5", "gad7_item6", "gad7_item7"]
+
+[prdt.scales.pcl5]
+items = [
+  "pcl5_item1",
+  "pcl5_item2",
+  "pcl5_item3",
+  "pcl5_item4",
+  "pcl5_item5",
+  "pcl5_item6",
+  "pcl5_item7",
+  "pcl5_item8",
+  "pcl5_item9",
+  "pcl5_item10",
+  "pcl5_item11",
+  "pcl5_item12",
+  "pcl5_item13",
+  "pcl5_item14",
+  "pcl5_item15",
+  "pcl5_item16",
+  "pcl5_item17",
+  "pcl5_item18",
+  "pcl5_item19",
+  "pcl5_item20"
+]
+
+[prdt.alerts]
+missing_pct = 15.0
+
+[prdt.alerts.reliability]
+cronbach_alpha_min = 0.8
+mcdonald_omega_min = 0.8
+
+[prdt.schema]
+required = ["participant_id", "session_date"]
+
+[prdt.schema.types]
+participant_id = "string"
+session_date = "date"
+phq9_item1 = "numeric"
+
+[prdt.schema.ranges.phq9_item1]
+min = 0
+max = 3
+
+[prdt.phi]
+keywords = ["contact", "email", "phone"]
+ignore_columns = ["note"]
+
+[prdt.outputs]
+keep_intermediate = true

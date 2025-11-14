@@ -155,6 +155,26 @@ The CLI also prints a short summary so you notice issues immediately.
 
 Run the same profile again after a new batch of data and PRDT will also emit `drift.json` whenever a scale’s mean shifts by ≥1 point compared with the previous run.
 
+### Dataset A playbook
+
+Dataset A lives outside the repo (secure share). The `configs/dataset_a.toml` profile
+describes how to clean/anonymize it:
+
+```bash
+export PRDT_ANON_KEY="..."  # rotate per KEY_HANDLING.md
+prdt --config configs/dataset_a.toml
+```
+
+- `input` points at `data/dataset_a/raw.csv` (drop-in placeholder—update to the
+  secure path on your machine).
+- Outputs land in `outputs/dataset-a/` with the full manifest/report stack so you
+  can attach them to OSF once PHI checks pass.
+- Score columns cover PHQ-9, GAD-7, and PCL-5 totals; adjust the config if the
+  instrument list changes.
+
+Copy this section into `PortfolioHub.md` once Dataset A publishes to OSF so the
+workflow is discoverable.
+
 ## Documentation
 - [/docs/README.md](docs/README.md): links to a non-technical walkthrough, concept notes, and a copy/paste quickstart for new teammates or admissions reviewers.
 

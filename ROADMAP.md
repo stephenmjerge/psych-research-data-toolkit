@@ -8,6 +8,7 @@ Clean, anonymize, and standardize mental‑health datasets reproducibly.
 - Publish first OSF dataset.
 - Write validation + descriptives notebook.
 - Tag v0.5 release.
+- Document Dataset A cleaning profile (configs/dataset_a.toml + README note) — added Nov 13, 2025.
 
 ## Phase 2
 - Pilot PRDT in real lab.
