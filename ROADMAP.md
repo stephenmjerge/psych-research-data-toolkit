@@ -5,7 +5,7 @@ Clean, anonymize, and standardize mental‑health datasets reproducibly.
 
 ## Phase 1
 - Implement cleaning pipeline.
-- Publish first OSF dataset.
+- Publish first OSF dataset (synthetic Dataset A demo bundle + DOI https://doi.org/10.17605/OSF.IO/BX76K shipped Nov 14, 2025; replicate with live Dataset A once approved).
 - Write validation + descriptives notebook.
 - Tag v0.5 release.
 - Document Dataset A cleaning profile (configs/dataset_a.toml + README note) — added Nov 13, 2025.
