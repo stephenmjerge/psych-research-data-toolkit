@@ -1,0 +1,63 @@
+[
+  {
+    "type": "missingness",
+    "column": "note",
+    "percent": 100.0,
+    "threshold": 15.0
+  },
+  {
+    "type": "missingness",
+    "column": "contact",
+    "percent": 100.0,
+    "threshold": 15.0
+  },
+  {
+    "type": "reliability",
+    "target": "overall",
+    "metric": "cronbach_alpha",
+    "value": 0.6977770964280241,
+    "threshold": 0.8
+  },
+  {
+    "type": "reliability",
+    "target": "phq9",
+    "metric": "cronbach_alpha",
+    "value": 0.41265784726398075,
+    "threshold": 0.8
+  },
+  {
+    "type": "reliability",
+    "target": "phq9",
+    "metric": "mcdonald_omega",
+    "value": 0.41309037294140044,
+    "threshold": 0.8
+  },
+  {
+    "type": "reliability",
+    "target": "gad7",
+    "metric": "cronbach_alpha",
+    "value": -0.3277353689567428,
+    "threshold": 0.8
+  },
+  {
+    "type": "reliability",
+    "target": "gad7",
+    "metric": "mcdonald_omega",
+    "value": 0.1666098022206594,
+    "threshold": 0.8
+  },
+  {
+    "type": "reliability",
+    "target": "pcl5",
+    "metric": "cronbach_alpha",
+    "value": -0.2974974035981104,
+    "threshold": 0.8
+  },
+  {
+    "type": "reliability",
+    "target": "pcl5",
+    "metric": "mcdonald_omega",
+    "value": 0.20409465785602288,
+    "threshold": 0.8
+  }
+]

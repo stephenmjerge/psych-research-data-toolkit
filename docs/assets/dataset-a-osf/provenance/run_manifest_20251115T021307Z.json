@@ -1,0 +1,148 @@
+{
+  "prdt_version": "0.1.0",
+  "git_sha": "c1ccfc5cc602b88a2283c6d164d2e3fc237978ae",
+  "run_at": "2025-11-15T02:13:07.737092+00:00",
+  "command": "run",
+  "score_scales": [
+    "phq9",
+    "gad7",
+    "pcl5"
+  ],
+  "config_path": "configs/dataset_a.toml",
+  "config_hash": "085a0afa136ff994c7de663043f945907839ea4fcc3391f89f3bda246185092f",
+  "input": {
+    "path": "/Users/stephenjerge/Projects/clinical-science-lab/psych-research-data-toolkit/data/examples/dataset_a_demo.csv",
+    "sha256": "11879f2d16cf325a0b7bf39d0184f2ad617b81b656cdd65815084141dab28e86",
+    "raw_rows": 15,
+    "post_clean_rows": 15
+  },
+  "schema_messages": [
+    "Missing required column: participant_id",
+    "Column 'participant_id' missing (expected type string)"
+  ],
+  "scales_scored": [
+    {
+      "name": "phq9",
+      "output_column": "phq9_score",
+      "method": "sum",
+      "cutoffs": {
+        "minimal": "0-4",
+        "mild": "5-9",
+        "moderate": "10-14",
+        "moderately_severe": "15-19",
+        "severe": "20-27"
+      },
+      "items": [
+        "phq9_item1",
+        "phq9_item2",
+        "phq9_item3",
+        "phq9_item4",
+        "phq9_item5",
+        "phq9_item6",
+        "phq9_item7",
+        "phq9_item8",
+        "phq9_item9"
+      ]
+    },
+    {
+      "name": "gad7",
+      "output_column": "gad7_score",
+      "method": "sum",
+      "cutoffs": {
+        "minimal": "0-4",
+        "mild": "5-9",
+        "moderate": "10-14",
+        "severe": "15-21"
+      },
+      "items": [
+        "gad7_item1",
+        "gad7_item2",
+        "gad7_item3",
+        "gad7_item4",
+        "gad7_item5",
+        "gad7_item6",
+        "gad7_item7"
+      ]
+    },
+    {
+      "name": "pcl5",
+      "output_column": "pcl5_score",
+      "method": "sum",
+      "cutoffs": {
+        "subthreshold": "0-32",
+        "probable_ptsd": "33+"
+      },
+      "items": [
+        "pcl5_item1",
+        "pcl5_item2",
+        "pcl5_item3",
+        "pcl5_item4",
+        "pcl5_item5",
+        "pcl5_item6",
+        "pcl5_item7",
+        "pcl5_item8",
+        "pcl5_item9",
+        "pcl5_item10",
+        "pcl5_item11",
+        "pcl5_item12",
+        "pcl5_item13",
+        "pcl5_item14",
+        "pcl5_item15",
+        "pcl5_item16",
+        "pcl5_item17",
+        "pcl5_item18",
+        "pcl5_item19",
+        "pcl5_item20"
+      ]
+    }
+  ],
+  "phi_flags": null,
+  "alerts_count": 9,
+  "outputs": [
+    "alerts.json",
+    "data_dictionary.csv",
+    "hist_gad7_score.png",
+    "hist_gad7_total.png",
+    "hist_pcl5_score.png",
+    "hist_pcl5_total.png",
+    "hist_phq9_score.png",
+    "hist_phq9_total.png",
+    "interim_clean.csv",
+    "missingness.png",
+    "report.json",
+    "scale_items_gad7.png",
+    "scale_items_pcl5.png",
+    "scale_items_phq9.png",
+    "scale_summary.png"
+  ],
+  "scale_scores": [
+    {
+      "name": "phq9",
+      "score_column": "phq9_score",
+      "mean": 13.133333333333333,
+      "std": 3.979710446514324,
+      "min": 6.0,
+      "max": 20.0,
+      "interpretation": "moderate"
+    },
+    {
+      "name": "gad7",
+      "score_column": "gad7_score",
+      "mean": 9.666666666666666,
+      "std": 2.4976179127511156,
+      "min": 4.0,
+      "max": 14.0,
+      "interpretation": null
+    },
+    {
+      "name": "pcl5",
+      "score_column": "pcl5_score",
+      "mean": 37.733333333333334,
+      "std": 5.470265946351193,
+      "min": 28.0,
+      "max": 49.0,
+      "interpretation": "probable_ptsd"
+    }
+  ],
+  "python_version": "3.11.4 (v3.11.4:d2340ef257, Jun  6 2023, 19:15:51) [Clang 13.0.0 (clang-1300.0.29.30)]"
+}

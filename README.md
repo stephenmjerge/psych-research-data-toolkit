@@ -175,9 +175,23 @@ prdt --config configs/dataset_a.toml
   / `DATASET_A_OUTDIR` without editing the profile.
 - See `docs/dataset_a.md` for the full checklist plus demo artifacts under
   `docs/assets/dataset-a-demo/`.
+- OSF demo bundle (synthetic Dataset A) with manifest + config: https://doi.org/10.17605/OSF.IO/BX76K (generated Nov 14, 2025 via `scripts/run_dataset_a_osf_demo.sh`).
 
 Copy this section into `PortfolioHub.md` once Dataset A publishes to OSF so the
 workflow is discoverable.
+
+#### Rebuild the OSF bundle
+
+When admissions reviewers or collaborators need the Dataset A artifact, regenerate it with the helper script and stash the outputs inside `docs/assets/dataset-a-osf/`:
+
+```bash
+export PRDT_ANON_KEY="$(openssl rand -hex 32)"
+DATASET_A_INPUT="/secure/raw/dataset_a.csv" \
+DATASET_A_OUTDIR="$(pwd)/outputs/dataset-a-osf" \
+scripts/run_dataset_a.sh
+```
+
+Copy the sanitized outputs (`interim_clean.csv`, `report.json`, plots, alerts) into a staging folder, zip them (`dataset-a-osf-bundle-YYYYMMDD.zip`), and drop the archive under `docs/assets/dataset-a-osf/bundle/`. Move the latest `run_manifest_*.json` into `docs/assets/dataset-a-osf/provenance/` so the OSF README can cite the exact command + git SHA. See `docs/assets/dataset-a-osf/README.md` for the upload checklist.
 
 ## Documentation
 - [/docs/README.md](docs/README.md): links to a non-technical walkthrough, concept notes, and a copy/paste quickstart for new teammates or admissions reviewers.
