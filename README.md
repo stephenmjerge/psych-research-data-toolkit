@@ -175,7 +175,7 @@ prdt --config configs/dataset_a.toml
   / `DATASET_A_OUTDIR` without editing the profile.
 - See `docs/dataset_a.md` for the full checklist plus demo artifacts under
   `docs/assets/dataset-a-demo/`.
-- OSF demo bundle (synthetic Dataset A) with manifest + config: Stephen M. Jerge — Clinical Science Lab (DOI: https://doi.org/10.17605/OSF.IO/BX76K); Dataset A component: https://osf.io/jcnp5/ (generated Nov 14, 2025 via `scripts/run_dataset_a_osf_demo.sh`).
+- OSF demo bundle (synthetic Dataset A) with manifest + config: Stephen M. Jerge — Clinical Science Lab (DOI: https://doi.org/10.17605/OSF.IO/BX76K); Dataset A component: https://osf.io/n4buw/ (generated Nov 14, 2025 via `scripts/run_dataset_a_osf_demo.sh`).
 
 Copy this section into `PortfolioHub.md` once Dataset A publishes to OSF so the
 workflow is discoverable.
