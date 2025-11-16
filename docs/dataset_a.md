@@ -38,6 +38,6 @@ This produces the files stored under `docs/assets/dataset-a-demo/`. Only keep th
 non-sensitive artifacts (histograms, missingness plot, report excerpt) in git.
 
 ## 5. Publish checklist
-- Run the workflow-organizer checklist script.
+- Run the psych-research-workflow-organizer checklist script.
 - Update `PortfolioHub.md` (Dataset A section) and `MASTER_TIMELINE.md` once the OSF upload is live.
 - Note the OSF DOI inside `README.md` and `docs/dataset_a.md` when available. (Current demo deposit: https://doi.org/10.17605/OSF.IO/BX76K generated via `scripts/run_dataset_a_osf_demo.sh` on Nov 14, 2025.)
