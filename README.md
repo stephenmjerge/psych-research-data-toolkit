@@ -1,4 +1,4 @@
-# Psych Research Data Toolkit
+# PRDT — Psych Research Data Toolkit
 
 > **Research-use only:** PRDT is a lab notebook for data-cleaning and QA. Do not deploy it for diagnosis or treatment decisions unless your workflow is IRB-approved, validated, and overseen by licensed clinicians with HIPAA-compliant safeguards.
 
