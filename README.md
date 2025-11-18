@@ -177,7 +177,7 @@ prdt --config configs/dataset_a.toml
   `docs/assets/dataset-a-demo/`.
 - OSF demo bundle (synthetic Dataset A) with manifest + config: Stephen M. Jerge — Clinical Science Lab (DOI: https://doi.org/10.17605/OSF.IO/BX76K); PRDT component: https://osf.io/qs8ag/; Dataset A sub-component: https://osf.io/n4buw/ (generated Nov 14, 2025 via `scripts/run_dataset_a_osf_demo.sh`).
 
-Copy this section into `PortfolioHub.md` once Dataset A publishes to OSF so the
+Copy this section into `docs/PortfolioHub.md` once Dataset A publishes to OSF so the
 workflow is discoverable.
 
 #### Rebuild the OSF bundle

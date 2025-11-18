@@ -39,5 +39,5 @@ non-sensitive artifacts (histograms, missingness plot, report excerpt) in git.
 
 ## 5. Publish checklist
 - Run the psych-research-workflow-organizer checklist script.
-- Update `PortfolioHub.md` (Dataset A section) and `MASTER_TIMELINE.md` once the OSF upload is live.
+- Update `docs/PortfolioHub.md` (Dataset A section) and `meta/MASTER_TIMELINE.md` once the OSF upload is live.
 - Note the lab hub DOI + components: Stephen M. Jerge — Clinical Science Lab (DOI: https://doi.org/10.17605/OSF.IO/BX76K), PRDT component https://osf.io/qs8ag/, and Dataset A sub-component https://osf.io/n4buw/ (PRDT: Dataset A — Anonymized Synthetic Survey Data).

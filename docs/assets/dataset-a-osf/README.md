@@ -38,5 +38,5 @@ When the pipeline finishes, copy the sanitized outputs (CSV, JSON, PNG) into a s
 - [ ] Confirm `scripts/run_dataset_a.sh` completed without errors.
 - [ ] Copy the latest `configs/dataset_a.toml` and `run_manifest_*.json` into `provenance/`.
 - [ ] Rename the archive to include the run date (`dataset-a-osf-bundle-YYYYMMDD.zip`).
-- [ ] Update `docs/dataset_a.md`, `README.md`, and `PortfolioHub.md` with the OSF link + rerun instructions.
-- [ ] Record the upload date + DOI in `LAUNCHPAD/next-actions.md` before moving to the next repo.
+- [ ] Update `docs/dataset_a.md`, `README.md`, and `docs/PortfolioHub.md` with the OSF link + rerun instructions.
+- [ ] Record the upload date + DOI in `meta/launchpad/next-actions.md` before moving to the next repo.

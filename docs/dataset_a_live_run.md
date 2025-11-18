@@ -43,7 +43,7 @@ This checklist captures everything needed to rerun the Dataset A cleaning/anonym
 2. [ ] Spot-check a handful of rows against the manual scoring key or clinic reference sheet if available.
 3. [ ] Zip the cleaned outputs + README + manifest via `scripts/run_dataset_a_osf_demo.sh --mode osf` (or replicate the commands manually if credentials differ).
 4. [ ] Upload the ZIP plus any refreshed plots to the existing OSF registration (`https://doi.org/10.17605/OSF.IO/BX76K`) and note the upload timestamp/revision in `docs/audits/dataset_a_live_ingest.md`.
-5. [ ] Update `PortfolioHub.md`, `PRDT/README.md`, and `LAUNCHPAD/next-actions.md` with the new "live dataset" status.
+5. [ ] Update `docs/PortfolioHub.md`, `PRDT/README.md`, and `meta/launchpad/next-actions.md` with the new "live dataset" status.
 
 ## Artifacts to capture
 
@@ -51,4 +51,4 @@ This checklist captures everything needed to rerun the Dataset A cleaning/anonym
 - PRDT CLI logs (store in `logs/dataset_a_live/`).
 - Cleaned output folder zipped for OSF + local backup.
 - README snippet describing what changed between the synthetic demo and the live run.
-- LAUNCHPAD note linking to the OSF revision + QA status.
+- `meta/launchpad` note linking to the OSF revision + QA status.
