@@ -46,8 +46,11 @@ Record a 60-second screen capture of `prdt run` plus sample plots and place it i
 | --- | --- | --- |
 | `PRDT_ANON_KEY` | Required when `participant_id` exists; used for HMAC anonymization | `export PRDT_ANON_KEY="$(openssl rand -hex 32)"` |
 | `MPLCONFIGDIR` / `XDG_CACHE_HOME` *(optional)* | Point Matplotlib caches at writable dirs on locked-down machines | `export MPLCONFIGDIR=$PWD/.cache/mpl` |
+| `PRDT_DISABLE_PLOTS` *(optional)* | Skip plot rendering for headless/CI runs | `export PRDT_DISABLE_PLOTS=1` |
 
 On Windows PowerShell use `setx PRDT_ANON_KEY (New-Guid)` and restart the shell.
+
+Headless or locked-down machines: set `PRDT_DISABLE_PLOTS=1` to skip Matplotlib renders and point `MPLCONFIGDIR`/`XDG_CACHE_HOME` at writable paths (examples above) to avoid cache errors.
 
 4. **Run the sample workflow** to verify everything works:
 
@@ -228,7 +231,7 @@ PRDT now aborts when PHI-like columns are detected to prevent accidental exports
 2. Install the wheel anywhere—no repository clone required:
 
    ```bash
-   pip install dist/prdt-0.1.0-py3-none-any.whl
+   pip install dist/prdt-0.1.1-py3-none-any.whl
    ```
 
 Attach the wheel to GitHub Releases so reviewers can `pip install` PRDT directly.

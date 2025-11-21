@@ -6,6 +6,21 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- N/A
+
+### Changed
+- N/A
+
+### Fixed
+- N/A
+
+### Security
+- N/A
+
+---
+
+## [v0.1.1] — 2025-11-21
+### Added
 - Cronbach’s alpha (internal consistency)
 - Missingness detail report (count and percent per column)
 - CLI subcommands: `clean`, `stats`, `plot`, `run`
@@ -30,9 +45,12 @@ and follows [Semantic Versioning](https://semver.org/).
 - GitHub Actions CI (pytest smoke test on push/PR)
 - Basic unit tests via `pytest` (CLI smoke test)
 - `/docs` folder with walkthrough, concepts, and non-technical quickstart guides
+- PHI guardrail tests covering ignore/allow/custom patterns and keyword-based flags
+- Headless/locked-down run notes (`PRDT_DISABLE_PLOTS`, cache env vars) in README/Quickstart
+- Optional dev extra (`.[dev]`) and `tomli` fallback for Python < 3.11
 
 ### Changed
-- README quickstart and command documentation
+- README quickstart and command documentation (including headless/CI guidance)
 
 ### Fixed
 - N/A

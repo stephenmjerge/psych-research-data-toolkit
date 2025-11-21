@@ -1,10 +1,13 @@
 [project]
 name = "prdt"
-version = "0.1.0"
+version = "0.1.1"
 description = "Psych Research Data Toolkit"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["pandas>=2.2","numpy>=1.26","matplotlib>=3.8"]
+dependencies = ["pandas>=2.2","numpy>=1.26","matplotlib>=3.8","tomli; python_version < \"3.11\""]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.4","build>=1.2"]
 
 [project.scripts]
 prdt = "prdt.cli:main"
