@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, os, json, sys, hashlib, subprocess
+import argparse, os, json, sys, hashlib, subprocess, tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 import pandas as pd
@@ -216,6 +216,28 @@ def _prepare_dataframe(path: str, skip_anon: bool,
 
     provenance["post_clean_rows"] = len(df)
     return df, provenance, phi_quarantine
+
+
+def _configure_demo_args(args: argparse.Namespace) -> argparse.Namespace:
+    """Seed a temp CSV for a one-command demo and set sensible defaults."""
+    tmp_dir = tempfile.mkdtemp(prefix="prdt-demo-")
+    demo_csv = os.path.join(tmp_dir, "demo.csv")
+    demo_rows = [
+        {"participant_id": "demo-001", "date": "2024-01-01", "phq9_total": 5, "gad7_total": 4},
+        {"participant_id": "demo-002", "date": "2024-02-01", "phq9_total": 9, "gad7_total": 7},
+        {"participant_id": "demo-003", "date": "2024-03-01", "phq9_total": 2, "gad7_total": 3},
+    ]
+    pd.DataFrame(demo_rows).to_csv(demo_csv, index=False)
+    if args.outdir is None:
+        stamp = datetime.now(timezone.utc).strftime("demo_%Y%m%dT%H%M%SZ")
+        args.outdir = os.path.join("outputs", stamp)
+    if getattr(args, "score_cols", None) is None:
+        args.score_cols = ["phq9_total", "gad7_total"]
+    args.input = demo_csv
+    args.skip_anon = True  # avoid key requirement for the bundled demo
+    if getattr(args, "allow_phi_export", None) is None:
+        args.allow_phi_export = True
+    return args
 
 def _guard_against_phi(quarantine: pd.DataFrame | None,
                        phi_flags: list[dict] | None,
@@ -567,6 +589,11 @@ def _run_full(args: argparse.Namespace) -> None:
         alerts.extend(drift_alerts)
         _persist_alerts(args.outdir, alerts)
 
+def _run_demo(args: argparse.Namespace) -> None:
+    print("[PRDT] Running demo with bundled sample data...")
+    _run_full(args)
+    print(f"[PRDT] Demo complete. Outputs written to: {args.outdir}")
+
 def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
     config_path = None
     cleaned: list[str] = []
@@ -738,6 +765,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub.add_parser("plot", parents=[common], help="Create histogram/time-trend plots")
     sub.add_parser("run", parents=[common], help="Run the full pipeline (clean + stats + plot)")
+    demo = sub.add_parser("demo", help="Run PRDT against bundled sample data (no config needed)")
+    demo.add_argument("--outdir", help="Directory for outputs (defaults to outputs/demo_<timestamp>)")
     return parser
 
 def main(argv: list[str] | None = None):
@@ -748,8 +777,12 @@ def main(argv: list[str] | None = None):
     if insert_default_command:
         cleaned = ["run"] + cleaned
     args = parser.parse_args(cleaned)
-    config, config_meta = _load_config(config_path)
-    args = _merge_config(args, config, allow_command_override=insert_default_command)
+    if args.command == "demo":
+        config, config_meta = {}, {"path": None, "hash": None}
+        args = _configure_demo_args(args)
+    else:
+        config, config_meta = _load_config(config_path)
+        args = _merge_config(args, config, allow_command_override=insert_default_command)
     args = _finalize_args(args, parser)
     args._config_path = config_meta.get("path")
     args._config_hash = config_meta.get("hash")
@@ -759,6 +792,7 @@ def main(argv: list[str] | None = None):
         "stats": _run_stats,
         "plot": _run_plot,
         "run": _run_full,
+        "demo": _run_demo,
     }
     action = actions.get(command)
     if not action:

@@ -222,3 +222,26 @@ def test_stats_alpha_flag(tmp_path):
     assert f"{expected:.3f}" in result.stdout
     assert "Cronbach" in result.stdout
     assert (outdir / "report.json").is_file()
+
+
+def test_demo_command(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    outdir = tmp_path / "demo"
+    env = os.environ.copy()
+    env.setdefault("PRDT_DISABLE_PLOTS", "1")
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "prdt.cli",
+            "demo",
+            "--outdir",
+            str(outdir),
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+    assert (outdir / "interim_clean.csv").is_file()
+    assert (outdir / "report.json").is_file()
+    assert (outdir / "run_manifest.json").is_file()
