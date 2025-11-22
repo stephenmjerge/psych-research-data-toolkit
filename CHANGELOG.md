@@ -35,6 +35,25 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [v0.1.4] — 2025-11-21
+### Added
+- `prdt doctor` environment check command
+- `--dry-run` flag to validate inputs/configs without writing outputs
+- `--html-report` option to emit a simple HTML summary alongside `report.json`
+- Clinician one-page quickstart/troubleshooting guide
+- Publish workflow to build and upload releases to PyPI (requires `PYPI_API_TOKEN`)
+
+### Changed
+- None
+
+### Fixed
+- None
+
+### Security
+- None
+
+---
+
 ## [v0.1.2] — 2025-11-21
 ### Added
 - `prdt demo` subcommand to run bundled sample data with zero config/key requirements

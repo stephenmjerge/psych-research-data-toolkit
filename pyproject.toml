@@ -1,6 +1,6 @@
 [project]
 name = "prdt"
-version = "0.1.3"
+version = "0.1.4"
 description = "Psych Research Data Toolkit"
 readme = "README.md"
 requires-python = ">=3.9"
