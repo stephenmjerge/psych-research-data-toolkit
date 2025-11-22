@@ -19,6 +19,24 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [v0.1.2] — 2025-11-21
+### Added
+- `prdt demo` subcommand to run bundled sample data with zero config/key requirements
+- README TL;DR with quick commands and requirements note
+- Tests covering `prdt demo` and PHI guardrail messaging
+
+### Changed
+- Default `--outdir` when omitted (outputs/run_<timestamp>) with stderr hint
+- Clearer anonymization-key guidance and PHI guardrail error copy (includes `--allow-phi-export` hint)
+
+### Fixed
+- None
+
+### Security
+- None
+
+---
+
 ## [v0.1.1] — 2025-11-21
 ### Added
 - Cronbach’s alpha (internal consistency)
