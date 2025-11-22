@@ -1,6 +1,8 @@
 from __future__ import annotations
 import pandas as pd
+import pytest
 from prdt.phi import scan_phi_columns, PhiOptions
+from prdt.cli import _guard_against_phi
 
 
 def test_ignore_columns_skips_phi_scan():
@@ -37,3 +39,12 @@ def test_keyword_column_name_triggers_flag():
     assert quarantine is not None and "guardian_name" in quarantine.columns
     assert flagged and flagged[0]["column"] == "guardian_name"
     assert any(match["pattern"] == "column_name" for match in flagged[0]["matches"])
+
+
+def test_phi_guardrail_message_mentions_allow_flag():
+    quarantine = pd.DataFrame({"contact": ["a@example.com"]})
+    with pytest.raises(SystemExit) as excinfo:
+        _guard_against_phi(quarantine, [{"column": "contact"}], allow_export=False)
+    message = str(excinfo.value)
+    assert "contact" in message
+    assert "--allow-phi-export" in message

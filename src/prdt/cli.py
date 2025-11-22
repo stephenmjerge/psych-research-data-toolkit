@@ -250,8 +250,8 @@ def _guard_against_phi(quarantine: pd.DataFrame | None,
     raise SystemExit(
         "[PRDT] PHI-like columns detected "
         f"({detail}). Run aborted to prevent accidental export. "
-        "Review the dataset, expand `[prdt.phi.allow_columns]`, "
-        "or rerun with `--allow-phi-export` if you intentionally need the raw values."
+        "If these columns are expected/synthetic, rerun with `--allow-phi-export` "
+        "or add them under `[prdt.phi.allow_columns]` to keep processing."
     )
 
 def _ensure_outdir(path: str) -> None:
