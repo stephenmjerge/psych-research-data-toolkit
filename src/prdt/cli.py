@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, os, json, sys, hashlib, subprocess, tempfile
+import argparse, os, json, sys, hashlib, subprocess, tempfile, platform
 from pathlib import Path
 from datetime import datetime, timezone
 import pandas as pd
@@ -192,6 +192,7 @@ def _prepare_dataframe(path: str, skip_anon: bool,
         "input_path": os.path.abspath(path),
         "input_hash": _file_hash(path),
         "raw_rows": len(df_raw),
+        "columns": list(df_raw.columns),
     }
     df = basic_clean(df_raw)
     if not skip_anon and "participant_id" in df.columns:
@@ -256,6 +257,29 @@ def _guard_against_phi(quarantine: pd.DataFrame | None,
 
 def _ensure_outdir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
+
+
+def _maybe_dry_run(
+    args: argparse.Namespace,
+    provenance: dict[str, object],
+) -> bool:
+    """Return True if dry-run is enabled and we should stop after validation."""
+    if not getattr(args, "dry_run", False):
+        return False
+    rows = provenance.get("post_clean_rows") or provenance.get("raw_rows")
+    columns = provenance.get("columns") if isinstance(provenance.get("columns"), list) else None
+    parts = [
+        f"input={provenance.get('input_path')}",
+        f"outdir={args.outdir}",
+        f"rows={rows}",
+    ]
+    if columns:
+        parts.append(f"columns={len(columns)}")
+    scored = provenance.get("scales_scored")
+    if scored:
+        parts.append(f"scales_scored={len(scored)}")
+    sys.stderr.write("[PRDT] Dry run: validation complete. " + "; ".join(parts) + "\n")
+    return True
 
 def _write_data_dictionary(df: pd.DataFrame, outdir: str) -> None:
     _ensure_outdir(outdir)
@@ -356,8 +380,10 @@ def _run_clean(args: argparse.Namespace) -> None:
         getattr(args, "custom_scale_definitions", None),
         getattr(args, "phi_options", None),
     )
-    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export or getattr(args, "dry_run", False))
     _ensure_score_cols(args, provenance)
+    if _maybe_dry_run(args, provenance):
+        return
     _write_clean_csv(df, args.outdir)
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: interim_clean.csv")
@@ -474,8 +500,10 @@ def _run_stats(args: argparse.Namespace) -> None:
         getattr(args, "custom_scale_definitions", None),
         getattr(args, "phi_options", None),
     )
-    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export or getattr(args, "dry_run", False))
     _ensure_score_cols(args, provenance)
+    if _maybe_dry_run(args, provenance):
+        return
     _write_data_dictionary(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
     scale_metadata = provenance.get("scales_scored")
@@ -527,8 +555,10 @@ def _run_plot(args: argparse.Namespace) -> None:
         getattr(args, "custom_scale_definitions", None),
         getattr(args, "phi_options", None),
     )
-    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export or getattr(args, "dry_run", False))
     _ensure_score_cols(args, provenance)
+    if _maybe_dry_run(args, provenance):
+        return
     plot_files = _write_plots(
         df,
         args.score_cols,
@@ -554,8 +584,10 @@ def _run_full(args: argparse.Namespace) -> None:
         getattr(args, "custom_scale_definitions", None),
         getattr(args, "phi_options", None),
     )
-    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export)
+    _guard_against_phi(phi_quarantine, provenance.get("phi_columns"), args.allow_phi_export or getattr(args, "dry_run", False))
     _ensure_score_cols(args, provenance)
+    if _maybe_dry_run(args, provenance):
+        return
     _write_clean_csv(df, args.outdir)
     phi_alerts = _format_phi_alerts(provenance.get("phi_columns"))
     scale_metadata = provenance.get("scales_scored")
@@ -593,6 +625,40 @@ def _run_demo(args: argparse.Namespace) -> None:
     print("[PRDT] Running demo with bundled sample data...")
     _run_full(args)
     print(f"[PRDT] Demo complete. Outputs written to: {args.outdir}")
+
+
+def _run_doctor(args: argparse.Namespace) -> None:
+    """Environment sanity checks for PRDT."""
+    checks: list[tuple[str, bool, str]] = []
+    py_ok = sys.version_info >= (3, 9)
+    checks.append(("python>=3.9", py_ok, platform.python_version()))
+
+    def _import_version(mod: str) -> tuple[bool, str]:
+        try:
+            module = __import__(mod)
+            version = getattr(module, "__version__", "unknown")
+            return True, str(version)
+        except Exception as exc:  # pragma: no cover - defensive
+            return False, str(exc)
+
+    for mod in ("pandas", "numpy", "matplotlib"):
+        ok, note = _import_version(mod)
+        checks.append((mod, ok, note))
+
+    anon_key = os.getenv("PRDT_ANON_KEY")
+    key_ok = bool(anon_key) and len(str(anon_key)) >= 32
+    checks.append(("PRDT_ANON_KEY set (>=32 chars)", key_ok, "set" if anon_key else "missing"))
+
+    if args.input:
+        exists = os.path.exists(args.input)
+        checks.append(("input path exists", exists, args.input or ""))
+    passed = all(flag for _, flag, _ in checks)
+    for name, ok, note in checks:
+        status = "OK" if ok else "FAIL"
+        print(f"[PRDT][{status}] {name} ({note})")
+    if not passed:
+        sys.exit("[PRDT] Doctor checks failed. See items marked FAIL.")
+    print("[PRDT] Doctor checks passed.")
 
 def _split_config_args(argv: list[str]) -> tuple[str | None, list[str]]:
     config_path = None
@@ -704,6 +770,12 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object], allow_com
     return args
 
 def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> argparse.Namespace:
+    if not hasattr(args, "score_cols"):
+        args.score_cols = None
+    if not hasattr(args, "input"):
+        args.input = None
+    if not hasattr(args, "outdir"):
+        args.outdir = None
     if not hasattr(args, "scales"):
         args.scales = None
     if not hasattr(args, "alerts"):
@@ -720,6 +792,10 @@ def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) ->
         args.allow_phi_export = False
     if args.score_cols is None:
         args.score_cols = ["phq9_total", "gad7_total"]
+    if args.command == "doctor":
+        args.score_cols = getattr(args, "score_cols", []) or []
+        args.alerts = getattr(args, "alerts", None)
+        return args
     if args.outdir is None:
         stamp = datetime.now(timezone.utc).strftime("run_%Y%m%dT%H%M%SZ")
         args.outdir = os.path.join("outputs", stamp)
@@ -751,6 +827,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Proceed even when PHI-like columns are detected (default aborts).",
     )
+    common.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate inputs/config and stop before writing outputs.",
+    )
 
     parser = argparse.ArgumentParser(description="PRDT CLI")
     sub = parser.add_subparsers(dest="command", metavar="command")
@@ -767,6 +848,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("run", parents=[common], help="Run the full pipeline (clean + stats + plot)")
     demo = sub.add_parser("demo", help="Run PRDT against bundled sample data (no config needed)")
     demo.add_argument("--outdir", help="Directory for outputs (defaults to outputs/demo_<timestamp>)")
+    sub.add_parser("doctor", help="Run environment checks (Python, deps, key, input path)")
     return parser
 
 def main(argv: list[str] | None = None):
@@ -794,6 +876,7 @@ def main(argv: list[str] | None = None):
         "plot": _run_plot,
         "run": _run_full,
         "demo": _run_demo,
+        "doctor": _run_doctor,
     }
     action = actions.get(command)
     if not action:

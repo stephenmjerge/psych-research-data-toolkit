@@ -245,3 +245,52 @@ def test_demo_command(tmp_path):
     assert (outdir / "interim_clean.csv").is_file()
     assert (outdir / "report.json").is_file()
     assert (outdir / "run_manifest.json").is_file()
+
+
+def test_dry_run_skips_outputs(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    input_csv = repo_root / "data" / "examples" / "surveys.csv"
+    outdir = tmp_path / "dry"
+    env = os.environ.copy()
+    env["PRDT_ANON_KEY"] = "this-is-a-secure-key-used-for-tests-1234567890abcdef"
+    env.setdefault("PRDT_DISABLE_PLOTS", "1")
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "prdt.cli",
+            "run",
+            "--input",
+            str(input_csv),
+            "--outdir",
+            str(outdir),
+            "--score-cols",
+            "phq9_total",
+            "gad7_total",
+            "--dry-run",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+    assert not (outdir / "interim_clean.csv").exists()
+    assert not (outdir / "report.json").exists()
+
+
+def test_doctor_command():
+    repo_root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.setdefault("PRDT_ANON_KEY", "this-is-a-secure-key-used-for-tests-1234567890abcdef")
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "prdt.cli",
+            "doctor",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
