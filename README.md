@@ -66,6 +66,7 @@ Headless or locked-down machines: set `PRDT_DISABLE_PLOTS=1` to skip Matplotlib 
    ```
 
    Use `python -m prdt.cli run ...` if the console script is unavailable. Add `--skip-anon` if you need to retain `participant_id` for local debugging only.
+   Fastest first run: `prdt demo` (bundled sample data, outputs under `outputs/demo_*`, no config/key required).
 
 ## CLI cheatsheet
 
