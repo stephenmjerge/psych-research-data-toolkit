@@ -12,6 +12,8 @@ Psych Research Data Toolkit (PRDT) is a reproducible CLI for cleaning, anonymizi
 - `prdt demo` — one-command demo with bundled sample data (outputs in `outputs/demo_*`)
 - `prdt --config configs/anxiety.toml` — full pipeline with the bundled profile
 - `prdt run --input data/examples/surveys.csv --outdir outputs/demo --score-cols phq9_total gad7_total`
+- `prdt doctor` — environment check (Python, deps, key, input path if provided)
+- `--dry-run` to validate without writing outputs; `--html-report` to emit a simple HTML summary
 - Requirements: Python 3.9+ with pandas, numpy, matplotlib (installed via the wheel or `pip install -e ".[dev]"`)
 
 ### Visual snapshot
@@ -78,6 +80,9 @@ Headless or locked-down machines: set `PRDT_DISABLE_PLOTS=1` to skip Matplotlib 
 | `prdt stats [--alpha]` | Validate score columns, compute descriptives/reliability/missingness; `--alpha` prints Cronbach’s α for `--score-cols` | `prdt stats --input data/examples/surveys.csv --outdir outputs/stats --score-cols phq9_total gad7_total --alpha` |
 | `prdt plot` | Generate histogram, trend, and missingness plots for selected columns | `prdt plot --input data/examples/surveys.csv --outdir outputs/plots --score-cols phq9_total` |
 | `prdt run` | Full pipeline (`clean` + `stats` + `plot`), default command when omitted | `prdt run --input data/examples/surveys.csv --outdir outputs/run1` |
+| `prdt doctor` | Environment check (Python, deps, key, input path) | `prdt doctor` |
+| `--dry-run` | Validate inputs/config and stop before writing outputs | `prdt run ... --dry-run` |
+| `--html-report` | Save a simple HTML summary alongside `report.json` | `prdt stats ... --html-report` |
 
 ## Profiles (`--config`)
 - Create a TOML profile to avoid repeating CLI flags. Paths in the file are resolved relative to the config’s directory.

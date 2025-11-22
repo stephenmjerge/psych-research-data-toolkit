@@ -7,5 +7,6 @@ Welcome! These short guides explain how to run the Psych Research Data Toolkit (
 | [Walkthrough](walkthrough.md) | From raw CSV → anonymized outputs → plots/alerts |
 | [Concepts](concepts.md) | Reliability, missingness, PHI, drift summaries |
 | [Quickstart](quickstart.md) | Copy/paste instructions for new machines/users |
+| [Clinician Quickstart](clinician_quickstart.md) | One-page setup + troubleshooting for clinicians |
 
 Each guide keeps screenshots/command snippets short so you can scan quickly during a busy clinic or study session.
