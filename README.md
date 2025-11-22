@@ -241,7 +241,7 @@ PRDT now aborts when PHI-like columns are detected to prevent accidental exports
 2. Install the wheel anywhere—no repository clone required:
 
    ```bash
-   pip install dist/prdt-0.1.2-py3-none-any.whl
+   pip install dist/prdt-0.1.4-py3-none-any.whl
    ```
 
 Attach the wheel to GitHub Releases so reviewers can `pip install` PRDT directly.

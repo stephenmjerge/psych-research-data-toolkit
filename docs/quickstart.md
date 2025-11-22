@@ -5,7 +5,7 @@
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-lock.txt
-pip install dist/prdt-0.1.2-py3-none-any.whl  # or pip install -e . if you cloned the repo
+pip install dist/prdt-0.1.4-py3-none-any.whl  # or pip install -e . if you cloned the repo
 python -m build  # optional: regenerate wheels for other machines
 ```
 

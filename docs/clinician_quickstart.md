@@ -6,7 +6,7 @@ Minimal, copy/paste steps to prove PRDT works and to troubleshoot common blocker
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install https://github.com/stephenmjerge/psych-research-data-toolkit/releases/latest/download/prdt-0.1.3-py3-none-any.whl
+pip install https://github.com/stephenmjerge/psych-research-data-toolkit/releases/latest/download/prdt-0.1.4-py3-none-any.whl
 ```
 
 ## 2) Fastest first run
