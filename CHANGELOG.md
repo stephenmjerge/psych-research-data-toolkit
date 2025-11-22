@@ -19,6 +19,22 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [v0.1.3] — 2025-11-21
+### Added
+- Release/demo badges in README for quick visibility
+- Config summary log after loading TOML (input, outdir, score cols, alerts)
+
+### Changed
+- CI workflow runs `python -m pytest` with headless env defaults and secure test key
+
+### Fixed
+- None
+
+### Security
+- None
+
+---
+
 ## [v0.1.2] — 2025-11-21
 ### Added
 - `prdt demo` subcommand to run bundled sample data with zero config/key requirements
