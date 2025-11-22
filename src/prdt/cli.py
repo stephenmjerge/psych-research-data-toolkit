@@ -195,7 +195,10 @@ def _prepare_dataframe(path: str, skip_anon: bool,
     }
     df = basic_clean(df_raw)
     if not skip_anon and "participant_id" in df.columns:
-        df = anonymize_column(df, "participant_id", out_col="anon_id")
+        try:
+            df = anonymize_column(df, "participant_id", out_col="anon_id")
+        except RuntimeError as exc:
+            raise SystemExit(f"[PRDT] {exc} Set PRDT_ANON_KEY (e.g., export PRDT_ANON_KEY=\"$(openssl rand -hex 32)\").")
 
     df, phi_flags, phi_quarantine = scan_phi_columns(df, phi_options)
     if phi_flags:
@@ -690,9 +693,12 @@ def _finalize_args(args: argparse.Namespace, parser: argparse.ArgumentParser) ->
         args.allow_phi_export = False
     if args.score_cols is None:
         args.score_cols = ["phq9_total", "gad7_total"]
-    missing = [field for field in ("input", "outdir") if getattr(args, field) is None]
-    if missing:
-        parser.error(f"Missing required options: {', '.join('--' + m.replace('_', '-') for m in missing)}")
+    if args.outdir is None:
+        stamp = datetime.now(timezone.utc).strftime("run_%Y%m%dT%H%M%SZ")
+        args.outdir = os.path.join("outputs", stamp)
+        sys.stderr.write(f"[PRDT] No --outdir provided; using '{args.outdir}'.\n")
+    if args.input is None:
+        parser.error("Missing --input. Provide a CSV path or use --config <profile.toml>.")
     if args.skip_anon is None:
         args.skip_anon = False
     return args
