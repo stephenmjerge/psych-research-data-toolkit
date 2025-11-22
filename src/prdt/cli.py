@@ -281,6 +281,45 @@ def _maybe_dry_run(
     sys.stderr.write("[PRDT] Dry run: validation complete. " + "; ".join(parts) + "\n")
     return True
 
+
+def _write_html_report(outdir: str) -> None:
+    path = os.path.join(outdir, "report.json")
+    if not os.path.exists(path):
+        return
+    with open(path, "r") as f:
+        data = json.load(f)
+    alerts = data.get("alerts") or []
+    missing = data.get("missing", {})
+    cronbach = data.get("cronbach_alpha")
+    omega = data.get("mcdonald_omega")
+    scale_scores = data.get("scale_scores") or []
+    html_lines = [
+        "<html><head><title>PRDT Report</title></head><body>",
+        "<h1>PRDT Report</h1>",
+        "<p><strong>Outputs:</strong> report.json</p>",
+        "<h2>Reliability</h2>",
+        f"<p>Cronbach's alpha: {cronbach}</p>",
+        f"<p>McDonald's omega: {omega}</p>",
+        "<h2>Alerts</h2>",
+    ]
+    if alerts:
+        html_lines.append("<ul>")
+        for alert in alerts:
+            html_lines.append(f"<li>{alert}</li>")
+        html_lines.append("</ul>")
+    else:
+        html_lines.append("<p>No alerts.</p>")
+    html_lines.append("<h2>Missingness</h2>")
+    html_lines.append(f"<pre>{json.dumps(missing, indent=2)}</pre>")
+    if scale_scores:
+        html_lines.append("<h2>Scale Scores</h2><ul>")
+        for entry in scale_scores:
+            html_lines.append(f"<li>{entry}</li>")
+        html_lines.append("</ul>")
+    html_lines.append("</body></html>")
+    with open(os.path.join(outdir, "report.html"), "w") as f:
+        f.write("\n".join(html_lines))
+
 def _write_data_dictionary(df: pd.DataFrame, outdir: str) -> None:
     _ensure_outdir(outdir)
     dictionary = build_data_dictionary(df)
@@ -520,6 +559,9 @@ def _run_stats(args: argparse.Namespace) -> None:
     _write_phi_quarantine(phi_quarantine, args.outdir)
     print("[PRDT] saved: report.json")
     outputs = ["report.json", "data_dictionary.csv"]
+    if getattr(args, "html_report", False):
+        _write_html_report(args.outdir)
+        outputs.append("report.html")
     if alerts:
         outputs.append("alerts.json")
     if phi_quarantine is not None and not phi_quarantine.empty:
@@ -608,8 +650,12 @@ def _run_full(args: argparse.Namespace) -> None:
         scale_metadata=provenance.get("scales_scored"),
     )
     _write_phi_quarantine(phi_quarantine, args.outdir)
+    if getattr(args, "html_report", False):
+        _write_html_report(args.outdir)
     print("[PRDT] saved: interim_clean.csv, report.json, and plots")
     outputs = ["interim_clean.csv", "data_dictionary.csv", "report.json"]
+    if getattr(args, "html_report", False):
+        outputs.append("report.html")
     if alerts:
         outputs.append("alerts.json")
     outputs.extend(plot_files)
@@ -831,6 +877,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Validate inputs/config and stop before writing outputs.",
+    )
+    common.add_argument(
+        "--html-report",
+        action="store_true",
+        help="Also write report.html (plain-language summary) alongside report.json.",
     )
 
     parser = argparse.ArgumentParser(description="PRDT CLI")

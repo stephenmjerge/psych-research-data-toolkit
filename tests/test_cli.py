@@ -294,3 +294,33 @@ def test_doctor_command():
         capture_output=True,
         text=True,
     )
+
+
+def test_html_report_flag(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    input_csv = repo_root / "data" / "examples" / "surveys.csv"
+    outdir = tmp_path / "html"
+    env = os.environ.copy()
+    env["PRDT_ANON_KEY"] = "this-is-a-secure-key-used-for-tests-1234567890abcdef"
+    env.setdefault("PRDT_DISABLE_PLOTS", "1")
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "prdt.cli",
+            "stats",
+            "--input",
+            str(input_csv),
+            "--outdir",
+            str(outdir),
+            "--score-cols",
+            "phq9_total",
+            "gad7_total",
+            "--allow-phi-export",
+            "--html-report",
+        ],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )
+    assert (outdir / "report.html").is_file()

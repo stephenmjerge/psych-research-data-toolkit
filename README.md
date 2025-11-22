@@ -207,6 +207,7 @@ Copy the sanitized outputs (`interim_clean.csv`, `report.json`, plots, alerts) i
 
 ## Documentation
 - [/docs/README.md](docs/README.md): links to a non-technical walkthrough, concept notes, and a copy/paste quickstart for new teammates or admissions reviewers.
+- [/docs/clinician_quickstart.md](docs/clinician_quickstart.md): one-page instructions + troubleshooting for clinicians.
 
 ## Alerts
 - `report.json` contains an `alerts` array. Each entry describes either:
