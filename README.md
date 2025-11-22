@@ -6,6 +6,12 @@
 
 Psych Research Data Toolkit (PRDT) is a reproducible CLI for cleaning, anonymizing, and summarizing mental-health CSVs. It handles HMAC-based identifiers, PHI scrubbing, descriptive stats, reliability checks, and visualization so trainees can ship trustworthy analyses without reinventing pipelines.
 
+### TL;DR
+- `prdt demo` — one-command demo with bundled sample data (outputs in `outputs/demo_*`)
+- `prdt --config configs/anxiety.toml` — full pipeline with the bundled profile
+- `prdt run --input data/examples/surveys.csv --outdir outputs/demo --score-cols phq9_total gad7_total`
+- Requirements: Python 3.9+ with pandas, numpy, matplotlib (installed via the wheel or `pip install -e ".[dev]"`)
+
 ### Visual snapshot
 
 Record a 60-second screen capture of `prdt run` plus sample plots and place it in `docs/` (e.g., `docs/prdt-demo.gif`). Use it in admissions decks or lab walk-throughs.
