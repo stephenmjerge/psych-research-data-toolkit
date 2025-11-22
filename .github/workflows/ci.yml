@@ -16,7 +16,8 @@ jobs:
       matrix:
         python-version: ["3.9", "3.11"]
     env:
-      PRDT_ANON_KEY: testkey
+      PRDT_ANON_KEY: this-is-a-secure-key-used-for-ci-1234567890abcdef
+      PRDT_DISABLE_PLOTS: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,4 +35,4 @@ jobs:
           pip install pytest
 
       - name: Run pytest
-        run: pytest -q
+        run: python -m pytest -q

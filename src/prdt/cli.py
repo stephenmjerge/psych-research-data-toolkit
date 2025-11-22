@@ -786,6 +786,7 @@ def main(argv: list[str] | None = None):
     args = _finalize_args(args, parser)
     args._config_path = config_meta.get("path")
     args._config_hash = config_meta.get("hash")
+    _log_config_summary(args)
     command = args.command
     actions = {
         "clean": _run_clean,
@@ -851,6 +852,24 @@ def _ensure_score_cols(args: argparse.Namespace, provenance: dict[str, object]) 
         col = entry.get("output_column")
         if col and col not in args.score_cols:
             args.score_cols.append(col)
+
+
+def _log_config_summary(args: argparse.Namespace) -> None:
+    """Print a short summary of parsed config args for quick sanity-checks."""
+    cfg = getattr(args, "_config_path", None)
+    if not cfg:
+        return
+    parts = [
+        f"config={cfg}",
+        f"input={args.input}",
+        f"outdir={args.outdir}",
+    ]
+    if args.score_cols:
+        parts.append(f"score_cols={args.score_cols}")
+    alerts = getattr(args, "alerts", None)
+    if alerts:
+        parts.append(f"alerts={alerts}")
+    sys.stderr.write("[PRDT] Config summary: " + "; ".join(parts) + "\n")
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,6 @@
 # PRDT — Psych Research Data Toolkit
+[![Release](https://img.shields.io/github/v/release/stephenmjerge/psych-research-data-toolkit)](https://github.com/stephenmjerge/psych-research-data-toolkit/releases/latest)
+[![Demo](https://img.shields.io/badge/CLI-prdt%20demo-blue)](#tldr)
 
 > **Research-use only:** PRDT is a lab notebook for data-cleaning and QA. Do not deploy it for diagnosis or treatment decisions unless your workflow is IRB-approved, validated, and overseen by licensed clinicians with HIPAA-compliant safeguards.
 
